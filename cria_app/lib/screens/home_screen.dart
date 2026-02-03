@@ -6,8 +6,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../utils/baby_data.dart';
-import 'package:flutter/foundation.dart';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart'; // Para kIsWeb
 
 class HomePregnancyScreen extends StatefulWidget {
   final Color themeColor;
@@ -15,6 +14,7 @@ class HomePregnancyScreen extends StatefulWidget {
   final String? babyGender;
   final DateTime? dumDate;
   final String? familyCode;
+  final String? familyId;
 
   const HomePregnancyScreen({
     super.key,
@@ -23,6 +23,7 @@ class HomePregnancyScreen extends StatefulWidget {
     this.babyGender,
     this.dumDate,
     this.familyCode,
+    this.familyId,
   });
 
   @override
@@ -32,21 +33,53 @@ class HomePregnancyScreen extends StatefulWidget {
 class _HomePregnancyScreenState extends State<HomePregnancyScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  Map<String, dynamic>? _momProfile;
-  Map<String, dynamic>? _dadProfile;
-  bool _isLoading = true;
 
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   Map<DateTime, List<Map<String, dynamic>>> _events = {};
   String _calendarView = 'Dia';
 
+  // Lista de pacientes para o Dropdown (Bebê + Pais)
+  List<String> _patientsList = ['Bebê'];
+
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
     _tabController = TabController(length: 2, vsync: this);
-    _loadProfiles();
+    _fetchFamilyNames(); // <--- Busca os nomes ao iniciar
+  }
+
+  // Busca nomes do pai e mãe para o dropdown
+  Future<void> _fetchFamilyNames() async {
+    if (widget.familyId == null) return;
+    try {
+      final profiles = await Supabase.instance.client
+          .from('profiles')
+          .select('nickname, role')
+          .eq('family_id', widget.familyId!);
+
+      List<String> loadedPatients = ['Bebê'];
+      for (var p in profiles) {
+        String role = p['role'] == 'mae'
+            ? 'Mamãe'
+            : (p['role'] == 'pai' ? 'Papai' : 'Outro');
+        String name = p['nickname'] ?? '';
+        if (name.isNotEmpty) {
+          loadedPatients.add("$role ($name)");
+        } else {
+          loadedPatients.add(role);
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _patientsList = loadedPatients;
+        });
+      }
+    } catch (e) {
+      print("Erro ao buscar nomes: $e");
+    }
   }
 
   int get _weeksPregnancy {
@@ -57,57 +90,19 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
     return w > 42 ? 42 : w;
   }
 
-  Future<void> _loadProfiles() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
-    try {
-      final myProfile = await Supabase.instance.client
-          .from('profiles')
-          .select()
-          .eq('id', user.id)
-          .single();
-      if (myProfile['family_id'] != null) {
-        final familyProfiles = await Supabase.instance.client
-            .from('profiles')
-            .select()
-            .eq('family_id', myProfile['family_id']);
-        if (mounted) {
-          setState(() {
-            try {
-              _momProfile = familyProfiles.firstWhere(
-                (p) => p['role'] == 'mae',
-              );
-            } catch (_) {}
-            try {
-              _dadProfile = familyProfiles.firstWhere(
-                (p) => p['role'] == 'pai',
-              );
-            } catch (_) {}
-            _isLoading = false;
-          });
-        }
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
   List<Map<String, dynamic>> _getEventsForDay(DateTime day) {
     final normalizedDay = DateTime(day.year, day.month, day.day);
     return _events[normalizedDay] ?? [];
   }
 
   Future<void> _openMap(String address) async {
-    final query = Uri.encodeComponent(address);
     final googleMapsUrl =
-        "https://www.google.com/maps/search/?api=1&query=$query";
+        "https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(address)}";
     if (await canLaunchUrl(Uri.parse(googleMapsUrl))) {
-      await launchUrl(Uri.parse(googleMapsUrl));
-    } else {
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Não foi possível abrir o mapa.")),
-        );
+      await launchUrl(
+        Uri.parse(googleMapsUrl),
+        mode: LaunchMode.externalApplication,
+      );
     }
   }
 
@@ -120,39 +115,35 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
   Map<String, String> _getTipsForWeek(int week) {
     if (week < 12) {
       return {
-        "body":
-            "Seu corpo está se adaptando! É normal sentir sono excessivo, náuseas e sensibilidade nos seios. Seu útero está do tamanho de uma laranja.",
-        "diet": "Foque no Ácido Fólico e muita água.",
+        "body": "Seu corpo está se adaptando! Sono e náuseas são normais.",
+        "diet": "Ácido Fólico e muita água.",
         "exercise": "Caminhadas leves.",
-        "mental": "Descanse o máximo possível.",
+        "mental": "Descanse bastante.",
         "baby": "Coração já bate forte!",
       };
     } else if (week < 20) {
       return {
-        "body":
-            "Sua barriguinha começa a aparecer! A pele pode esticar (use hidratante). O enjoo costuma passar e a energia volta.",
-        "diet": "Cálcio para os ossos do bebê.",
+        "body": "A barriguinha aparece! Hidrate a pele para evitar estrias.",
+        "diet": "Cálcio para os ossos.",
         "exercise": "Yoga ou Pilates.",
         "mental": "Converse com o bebê.",
-        "baby": "Impressões digitais se formando.",
+        "baby": "Digitais se formando.",
       };
     } else if (week < 28) {
       return {
-        "body":
-            "Você pode sentir dores nas costas e o centro de gravidade muda. O inchaço nos pés pode começar a aparecer no fim do dia.",
-        "diet": "Ferro para evitar anemia.",
-        "exercise": "Hidroginástica ajuda no peso.",
-        "mental": "Comece a pensar no quarto.",
+        "body": "O centro de gravidade muda. Cuidado com dores nas costas.",
+        "diet": "Ferro contra anemia.",
+        "exercise": "Hidroginástica.",
+        "mental": "Pense no quartinho.",
         "baby": "Já ouve sua voz!",
       };
     } else {
       return {
-        "body":
-            "Reta final! Falta de ar é comum pois o bebê pressiona o diafragma. As contrações de treinamento (Braxton Hicks) podem surgir.",
-        "diet": "Fibras (evite constipação).",
-        "exercise": "Alongamentos e respiração.",
-        "mental": "Prepare a mala da maternidade.",
-        "baby": "Ganhando peso e se posicionando.",
+        "body": "Reta final! Falta de ar é comum. Cuidado com o inchaço.",
+        "diet": "Fibras.",
+        "exercise": "Alongamentos.",
+        "mental": "Mala da maternidade pronta?",
+        "baby": "Ganhando peso.",
       };
     }
   }
@@ -183,72 +174,95 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
     );
   }
 
-  // --- ABA 1: VISÃO GERAL (ATUALIZADA) ---
+  // --- ABA 1: VISÃO GERAL ---
   Widget _buildOverviewTab() {
     final babyData = BabyData.getData(_weeksPregnancy);
     final tips = _getTipsForWeek(_weeksPregnancy);
-    String centerName = "Bebê";
-    if (widget.babyName != null && widget.babyName!.isNotEmpty)
-      centerName = widget.babyName!.toUpperCase();
-    else if (widget.babyGender == 'menino')
-      centerName = "MENINO";
-    else if (widget.babyGender == 'menina')
-      centerName = "MENINA";
+
+    String centerName =
+        widget.babyName?.toUpperCase() ??
+        (widget.babyGender == 'menino'
+            ? "MENINO"
+            : (widget.babyGender == 'menina' ? "MENINA" : "BEBÊ"));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // CABEÇALHO FAMÍLIA (Fotos)
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(50),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
+          StreamBuilder<List<Map<String, dynamic>>>(
+            stream: widget.familyId != null
+                ? Supabase.instance.client
+                      .from('profiles')
+                      .stream(primaryKey: ['id'])
+                      .eq('family_id', widget.familyId!)
+                : const Stream.empty(),
+            builder: (context, snapshot) {
+              Map<String, dynamic>? momProfile;
+              Map<String, dynamic>? dadProfile;
+
+              if (snapshot.hasData) {
+                final profiles = snapshot.data!;
+                try {
+                  momProfile = profiles.firstWhere((p) => p['role'] == 'mae');
+                } catch (_) {}
+                try {
+                  dadProfile = profiles.firstWhere((p) => p['role'] == 'pai');
+                } catch (_) {}
+              }
+
+              return Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 15,
+                  horizontal: 20,
                 ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildAvatarLarge(_dadProfile, Colors.blue, "Pai"),
-                Icon(Icons.favorite, color: Colors.red.shade200, size: 24),
-                Column(
-                  children: [
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: widget.themeColor.withOpacity(0.1),
-                      child: Icon(
-                        Icons.child_friendly,
-                        color: widget.themeColor,
-                        size: 30,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      centerName,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: widget.themeColor,
-                        fontSize: 12,
-                      ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(50),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
                     ),
                   ],
                 ),
-                Icon(Icons.favorite, color: Colors.red.shade200, size: 24),
-                _buildAvatarLarge(_momProfile, Colors.pink, "Mãe"),
-              ],
-            ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildAvatarLarge(dadProfile, Colors.blue, "Pai"),
+                    Icon(Icons.favorite, color: Colors.red.shade200, size: 24),
+                    Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 28,
+                          backgroundColor: widget.themeColor.withOpacity(0.1),
+                          child: Icon(
+                            Icons.child_friendly,
+                            color: widget.themeColor,
+                            size: 30,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          centerName,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: widget.themeColor,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Icon(Icons.favorite, color: Colors.red.shade200, size: 24),
+                    _buildAvatarLarge(momProfile, Colors.pink, "Mãe"),
+                  ],
+                ),
+              );
+            },
           ),
 
           const SizedBox(height: 25),
 
-          // --- SUPER CARD UNIFICADO (Semana + Fruta + Corpo da Mãe) ---
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
@@ -264,7 +278,6 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
             ),
             child: Column(
               children: [
-                // PARTE DE CIMA: SEMANA DO BEBÊ (Fundo Colorido)
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -322,14 +335,10 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                     ],
                   ),
                 ),
-
-                // PARTE DE BAIXO: CORPO DA MAMÃE (Fundo Claro)
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: widget.themeColor.withOpacity(
-                      0.05,
-                    ), // Fundo bem clarinho da cor do tema
+                    color: widget.themeColor.withOpacity(0.05),
                     borderRadius: const BorderRadius.vertical(
                       bottom: Radius.circular(25),
                     ),
@@ -380,7 +389,6 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
           ),
           const SizedBox(height: 15),
 
-          // GRID DE DICAS
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -421,211 +429,154 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
     );
   }
 
-  // --- AGENDA E OUTROS ---
+  // --- ABA 2: AGENDA MÉDICA ---
   Widget _buildAppointmentsTab() {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return const Center(child: Text("Erro de usuário"));
+    if (widget.familyId == null)
+      return const Center(child: Text("Carregando família..."));
 
-    return FutureBuilder(
-      future: Supabase.instance.client
-          .from('profiles')
-          .select('family_id')
-          .eq('id', user.id)
-          .single(),
+    return StreamBuilder(
+      stream: Supabase.instance.client
+          .from('appointments')
+          .stream(primaryKey: ['id'])
+          .eq('family_id', widget.familyId!),
       builder: (context, snapshot) {
-        if (!snapshot.hasData)
-          return const Center(child: CircularProgressIndicator());
-        final familyId = snapshot.data!['family_id'];
+        if (snapshot.hasData) {
+          final List<dynamic> rawList = snapshot.data!;
+          _events = {};
+          for (var item in rawList) {
+            final date = DateTime.parse(item['appointment_date']);
+            final normalizedDate = DateTime(date.year, date.month, date.day);
+            if (_events[normalizedDate] == null) _events[normalizedDate] = [];
+            _events[normalizedDate]!.add(item);
+          }
+        }
 
-        return StreamBuilder(
-          stream: Supabase.instance.client
-              .from('appointments')
-              .stream(primaryKey: ['id'])
-              .eq('family_id', familyId),
-          builder: (context, snapshot) {
-            if (snapshot.hasData) {
-              final List<dynamic> rawList = snapshot.data!;
-              _events = {};
-              for (var item in rawList) {
-                final date = DateTime.parse(item['appointment_date']);
-                final normalizedDate = DateTime(
-                  date.year,
-                  date.month,
-                  date.day,
-                );
-                if (_events[normalizedDate] == null)
-                  _events[normalizedDate] = [];
-                _events[normalizedDate]!.add(item);
-              }
+        List<dynamic> displayEvents = [];
+        if (_calendarView == 'Próximas') {
+          final now = DateTime.now().subtract(const Duration(hours: 2));
+          for (var list in _events.values) {
+            for (var item in list) {
+              if (DateTime.parse(item['appointment_date']).isAfter(now))
+                displayEvents.add(item);
             }
-            List<dynamic> displayEvents = [];
-            if (_calendarView == 'Próximas') {
-              final now = DateTime.now().subtract(const Duration(hours: 2));
-              for (var list in _events.values) {
-                for (var item in list) {
-                  if (DateTime.parse(item['appointment_date']).isAfter(now))
-                    displayEvents.add(item);
-                }
-              }
-              displayEvents.sort(
-                (a, b) =>
-                    a['appointment_date'].compareTo(b['appointment_date']),
-              );
-            } else if (_calendarView == 'Dia') {
-              displayEvents = _getEventsForDay(_selectedDay ?? DateTime.now());
-              displayEvents.sort(
-                (a, b) =>
-                    a['appointment_date'].compareTo(b['appointment_date']),
-              );
-            } else {
-              for (var list in _events.values) displayEvents.addAll(list);
-              displayEvents.sort(
-                (a, b) =>
-                    b['appointment_date'].compareTo(a['appointment_date']),
-              );
-            }
+          }
+          displayEvents.sort(
+            (a, b) => a['appointment_date'].compareTo(b['appointment_date']),
+          );
+        } else if (_calendarView == 'Dia') {
+          displayEvents = _getEventsForDay(_selectedDay ?? DateTime.now());
+          displayEvents.sort(
+            (a, b) => a['appointment_date'].compareTo(b['appointment_date']),
+          );
+        } else {
+          for (var list in _events.values) displayEvents.addAll(list);
+          displayEvents.sort(
+            (a, b) => b['appointment_date'].compareTo(a['appointment_date']),
+          );
+        }
 
-            return Column(
-              children: [
-                Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Column(
-                    children: [
-                      TableCalendar(
-                        firstDay: DateTime.utc(2023, 1, 1),
-                        lastDay: DateTime.utc(2030, 12, 31),
-                        focusedDay: _focusedDay,
-                        calendarFormat: CalendarFormat.month,
-                        selectedDayPredicate: (day) =>
-                            isSameDay(_selectedDay, day),
-                        eventLoader: _getEventsForDay,
-                        calendarStyle: CalendarStyle(
-                          markerDecoration: BoxDecoration(
-                            color: widget.themeColor,
-                            shape: BoxShape.circle,
-                          ),
-                          todayDecoration: BoxDecoration(
-                            color: widget.themeColor.withOpacity(0.5),
-                            shape: BoxShape.circle,
-                          ),
-                          selectedDecoration: BoxDecoration(
-                            color: widget.themeColor,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        onDaySelected: (s, f) => setState(() {
-                          _selectedDay = s;
-                          _focusedDay = f;
-                          _calendarView = 'Dia';
-                        }),
-                        onPageChanged: (f) => _focusedDay = f,
+        return Column(
+          children: [
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Column(
+                children: [
+                  TableCalendar(
+                    firstDay: DateTime.utc(2023, 1, 1),
+                    lastDay: DateTime.utc(2030, 12, 31),
+                    focusedDay: _focusedDay,
+                    calendarFormat: CalendarFormat.month,
+                    selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                    eventLoader: _getEventsForDay,
+                    calendarStyle: CalendarStyle(
+                      markerDecoration: BoxDecoration(
+                        color: widget.themeColor,
+                        shape: BoxShape.circle,
                       ),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          children: [
-                            _buildFilterChip(
-                              "Dia Selecionado",
-                              _calendarView == 'Dia',
-                              () => setState(() => _calendarView = 'Dia'),
-                            ),
-                            const SizedBox(width: 8),
-                            _buildFilterChip(
-                              "Próximas Consultas",
-                              _calendarView == 'Próximas',
-                              () => setState(() => _calendarView = 'Próximas'),
-                            ),
-                            const SizedBox(width: 8),
-                            _buildFilterChip(
-                              "Todas",
-                              _calendarView == 'Todos',
-                              () => setState(() => _calendarView = 'Todos'),
-                            ),
-                          ],
-                        ),
+                      todayDecoration: BoxDecoration(
+                        color: widget.themeColor.withOpacity(0.5),
+                        shape: BoxShape.circle,
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Row(
-                    children: [
-                      Text(
-                        _calendarView == 'Próximas'
-                            ? "Próximos agendamentos"
-                            : "Agenda do dia",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        "${displayEvents.length} eventos",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: widget.themeColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: displayEvents.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.event_available,
-                                size: 50,
-                                color: Colors.grey[200],
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                "Nenhum agendamento encontrado.",
-                                style: TextStyle(color: Colors.grey[400]),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: displayEvents.length,
-                          itemBuilder: (context, index) {
-                            final apt = displayEvents[index];
-                            return _buildAppointmentCard(apt);
-                          },
-                        ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      onPressed: () => _showAddAppointmentSheet(familyId),
-                      icon: const Icon(Icons.add),
-                      label: const Text("Nova Consulta"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: widget.themeColor,
-                        foregroundColor: Colors.white,
+                      selectedDecoration: BoxDecoration(
+                        color: widget.themeColor,
+                        shape: BoxShape.circle,
                       ),
                     ),
+                    onDaySelected: (s, f) => setState(() {
+                      _selectedDay = s;
+                      _focusedDay = f;
+                      _calendarView = 'Dia';
+                    }),
+                    onPageChanged: (f) => _focusedDay = f,
+                  ),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        _buildFilterChip(
+                          "Dia Selecionado",
+                          _calendarView == 'Dia',
+                          () => setState(() => _calendarView = 'Dia'),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(
+                          "Próximas Consultas",
+                          _calendarView == 'Próximas',
+                          () => setState(() => _calendarView = 'Próximas'),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(
+                          "Todas",
+                          _calendarView == 'Todos',
+                          () => setState(() => _calendarView = 'Todos'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: displayEvents.isEmpty
+                  ? Center(
+                      child: Text(
+                        "Nenhum agendamento.",
+                        style: TextStyle(color: Colors.grey[400]),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: displayEvents.length,
+                      itemBuilder: (context, index) =>
+                          _buildAppointmentCard(displayEvents[index]),
+                    ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  onPressed: () => _showAddAppointmentSheet(widget.familyId!),
+                  icon: const Icon(Icons.add),
+                  label: const Text("Nova Consulta"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: widget.themeColor,
+                    foregroundColor: Colors.white,
                   ),
                 ),
-              ],
-            );
-          },
+              ),
+            ),
+          ],
         );
       },
     );
   }
 
+  // --- MÉTODOS AUXILIARES ---
   Widget _buildFilterChip(String label, bool isSelected, VoidCallback onTap) {
     return ActionChip(
       label: Text(label),
@@ -938,26 +889,7 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
     );
   }
 
-  Widget _detailRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: Colors.grey),
-          const SizedBox(width: 10),
-          Text("$label: ", style: const TextStyle(color: Colors.grey)),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- NOVA CONSULTA HÍBRIDA (WEB/MOBILE) ---
+  // --- NOVA CONSULTA (CORRIGIDA) ---
   void _showAddAppointmentSheet(String familyId) {
     final titleController = TextEditingController();
     final doctorController = TextEditingController();
@@ -966,16 +898,14 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
     DateTime selectedDate = _selectedDay ?? DateTime.now();
     TimeOfDay selectedTime = TimeOfDay.now();
 
-    List<String> patients = ['Bebê'];
-    if (_momProfile != null)
-      patients.add("Mamãe (${_momProfile!['nickname']})");
-    if (_dadProfile != null)
-      patients.add("Papai (${_dadProfile!['nickname']})");
-    String? selectedPatient = patients.first;
+    // Usa a lista carregada no initState, se estiver vazia usa o padrão
+    List<String> currentPatients = _patientsList.isNotEmpty
+        ? _patientsList
+        : ['Bebê'];
+    String? selectedPatient = currentPatients.first;
 
-    // Variáveis para imagem Híbrida
     File? mobileImageFile;
-    Uint8List? webImageBytes; // Para Web
+    Uint8List? webImageBytes;
     bool isUploading = false;
 
     showModalBottomSheet(
@@ -988,7 +918,6 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setStateModal) {
-            // Função para pegar imagem compatível
             Future<void> pickImage(ImageSource source) async {
               final picker = ImagePicker();
               final picked = await picker.pickImage(
@@ -1024,6 +953,8 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                     ),
                   ),
                   const SizedBox(height: 20),
+
+                  // DROPDOWN PACIENTE (Agora com a lista certa)
                   DropdownButtonFormField<String>(
                     value: selectedPatient,
                     decoration: const InputDecoration(
@@ -1031,11 +962,12 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.person),
                     ),
-                    items: patients
+                    items: currentPatients
                         .map((p) => DropdownMenuItem(value: p, child: Text(p)))
                         .toList(),
                     onChanged: (v) => setStateModal(() => selectedPatient = v),
                   ),
+
                   const SizedBox(height: 10),
                   TextField(
                     controller: titleController,
@@ -1115,8 +1047,6 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
-
-                  // Exibição da Imagem (Híbrida)
                   if (mobileImageFile != null || webImageBytes != null)
                     Stack(
                       alignment: Alignment.topRight,
@@ -1174,8 +1104,9 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                         ),
                       ],
                     ),
-
                   const SizedBox(height: 20),
+
+                  // BOTÃO SALVAR (Com Try/Catch e Feedback)
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -1183,46 +1114,53 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                       onPressed: isUploading
                           ? null
                           : () async {
-                              if (titleController.text.isNotEmpty) {
-                                setStateModal(() => isUploading = true);
+                              // Validação Simples
+                              if (titleController.text.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Preencha a especialidade!"),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              setStateModal(() => isUploading = true);
+
+                              try {
                                 final user =
                                     Supabase.instance.client.auth.currentUser;
                                 String? uploadedUrl;
 
-                                // Lógica de Upload Híbrida
-                                try {
-                                  final fileName =
-                                      'docs/${user!.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-                                  if (kIsWeb && webImageBytes != null) {
-                                    await Supabase.instance.client.storage
-                                        .from('diary_photos')
-                                        .uploadBinary(
-                                          fileName,
-                                          webImageBytes!,
-                                          fileOptions: const FileOptions(
-                                            contentType: 'image/jpeg',
-                                          ),
-                                        );
+                                // Upload Imagem
+                                if (mobileImageFile != null ||
+                                    webImageBytes != null) {
+                                  try {
+                                    final fileName =
+                                        'docs/${user!.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+                                    if (kIsWeb && webImageBytes != null) {
+                                      await Supabase.instance.client.storage
+                                          .from('diary_photos')
+                                          .uploadBinary(
+                                            fileName,
+                                            webImageBytes!,
+                                            fileOptions: const FileOptions(
+                                              contentType: 'image/jpeg',
+                                            ),
+                                          );
+                                    } else if (mobileImageFile != null) {
+                                      await Supabase.instance.client.storage
+                                          .from('diary_photos')
+                                          .upload(fileName, mobileImageFile!);
+                                    }
                                     uploadedUrl = Supabase
                                         .instance
                                         .client
                                         .storage
                                         .from('diary_photos')
                                         .getPublicUrl(fileName);
-                                  } else if (!kIsWeb &&
-                                      mobileImageFile != null) {
-                                    await Supabase.instance.client.storage
-                                        .from('diary_photos')
-                                        .upload(fileName, mobileImageFile!);
-                                    uploadedUrl = Supabase
-                                        .instance
-                                        .client
-                                        .storage
-                                        .from('diary_photos')
-                                        .getPublicUrl(fileName);
+                                  } catch (e) {
+                                    print("Erro foto (ignorado): $e");
                                   }
-                                } catch (e) {
-                                  print("Erro foto: $e");
                                 }
 
                                 final finalDate = DateTime(
@@ -1232,6 +1170,8 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                                   selectedTime.hour,
                                   selectedTime.minute,
                                 );
+
+                                // Insert Seguro
                                 await Supabase.instance.client
                                     .from('appointments')
                                     .insert({
@@ -1245,7 +1185,14 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                                       'patient_name': selectedPatient,
                                       'photo_url': uploadedUrl,
                                     });
+
                                 if (mounted) Navigator.pop(context);
+                              } catch (e) {
+                                print("ERRO AO SALVAR CONSULTA: $e");
+                                setStateModal(() => isUploading = false);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text("Erro ao salvar: $e")),
+                                );
                               }
                             },
                       style: ElevatedButton.styleFrom(
@@ -1272,6 +1219,10 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
     String label,
   ) {
     String? photo = profile?['photo_url'];
+    if (photo != null) {
+      final uniqueId = DateTime.now().millisecondsSinceEpoch.toString();
+      photo = "$photo?v=$uniqueId";
+    }
     return Column(
       children: [
         Container(
@@ -1317,9 +1268,6 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 5),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1336,6 +1284,25 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
               subtitle,
               style: TextStyle(color: Colors.grey[700], fontSize: 11),
               overflow: TextOverflow.fade,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.grey),
+          const SizedBox(width: 10),
+          Text("$label: ", style: const TextStyle(color: Colors.grey)),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
         ],

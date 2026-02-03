@@ -1,6 +1,10 @@
+import 'dart:io';
 import 'dart:math';
+import 'package:flutter/foundation.dart'; // Para kIsWeb
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'main_screen.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
@@ -11,83 +15,145 @@ class ProfileSetupScreen extends StatefulWidget {
 }
 
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
+  // Controladores
+  final _fullNameController = TextEditingController();
   final _nicknameController = TextEditingController();
   final _inviteCodeController = TextEditingController();
-  String _selectedRole = 'mae'; // 'mae' ou 'pai'
-  bool _isJoiningFamily = false; // Alterna entre Criar ou Entrar
-  bool _isLoading = false;
+  final _birthDateController = TextEditingController();
 
-  // Gera código aleatório de 6 letras (Ex: AB3D9F)
-  String _generateInviteCode() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    Random rnd = Random();
-    return String.fromCharCodes(
-      Iterable.generate(6, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))),
+  // Variáveis de Estado
+  String _selectedRole = 'mae'; // 'mae' ou 'pai'
+  String? _selectedBloodType;
+  bool _isJoiningFamily = false;
+  bool _isLoading = false;
+  DateTime? _selectedDate;
+
+  // Imagem
+  File? _mobileImageFile;
+  Uint8List? _webImageBytes;
+  String? _uploadedPhotoUrl;
+
+  final List<String> _bloodTypes = [
+    'A+',
+    'A-',
+    'B+',
+    'B-',
+    'AB+',
+    'AB-',
+    'O+',
+    'O-',
+    'Não sei',
+  ];
+
+  // --- FUNÇÃO DE IMAGEM (Híbrida) ---
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 50,
     );
+
+    if (picked != null) {
+      if (kIsWeb) {
+        final bytes = await picked.readAsBytes();
+        setState(() => _webImageBytes = bytes);
+      } else {
+        setState(() => _mobileImageFile = File(picked.path));
+      }
+    }
   }
 
-  Future<void> _submit() async {
-    final nickname = _nicknameController.text.trim();
-    final user = Supabase.instance.client.auth.currentUser;
+  Future<String?> _uploadImage(String userId) async {
+    if (_mobileImageFile == null && _webImageBytes == null) return null;
 
-    if (nickname.isEmpty || user == null) {
+    try {
+      final fileName =
+          'avatars/${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      if (kIsWeb && _webImageBytes != null) {
+        await Supabase.instance.client.storage
+            .from('avatars')
+            .uploadBinary(
+              fileName,
+              _webImageBytes!,
+              fileOptions: const FileOptions(contentType: 'image/jpeg'),
+            );
+      } else if (_mobileImageFile != null) {
+        await Supabase.instance.client.storage
+            .from('avatars')
+            .upload(fileName, _mobileImageFile!);
+      }
+
+      return Supabase.instance.client.storage
+          .from('avatars')
+          .getPublicUrl(fileName);
+    } catch (e) {
+      print("Erro upload: $e");
+      return null;
+    }
+  }
+
+  // --- LÓGICA DE SALVAR ---
+  Future<void> _submit() async {
+    if (_fullNameController.text.isEmpty || _nicknameController.text.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Digite seu nome/apelido.")));
+      ).showSnackBar(const SnackBar(content: Text("Preencha nome e apelido.")));
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) throw "Erro de autenticação";
+
+      // 1. Upload da Foto (se tiver)
+      String? photoUrl = await _uploadImage(user.id);
+
       String familyId;
 
+      // 2. Lógica da Família (Criar ou Entrar)
       if (_isJoiningFamily) {
-        // --- ENTRAR EM FAMÍLIA EXISTENTE ---
         final code = _inviteCodeController.text.trim().toUpperCase();
         if (code.isEmpty) throw "Digite o código da família.";
 
-        // Busca a família pelo código
         final familyData = await Supabase.instance.client
             .from('families')
             .select('id')
             .eq('invite_code', code)
             .maybeSingle();
 
-        if (familyData == null)
-          throw "Código inválido ou família não encontrada.";
+        if (familyData == null) throw "Código inválido.";
         familyId = familyData['id'];
       } else {
-        // --- CRIAR NOVA FAMÍLIA ---
         final newCode = _generateInviteCode();
-
-        // Cria a família na tabela families
         final newFamily = await Supabase.instance.client
             .from('families')
             .insert({
               'invite_code': newCode,
               'created_by': user.id,
-              // Define padrões iniciais
               'baby_name': 'Bebê',
               'baby_gender': 'neutro',
             })
             .select()
             .single();
-
         familyId = newFamily['id'];
       }
 
-      // --- CRIA O PERFIL DO USUÁRIO ---
-      // Agora vinculamos o usuário a essa família
+      // 3. Salvar Perfil Completo
       await Supabase.instance.client.from('profiles').insert({
         'id': user.id,
-        'nickname': nickname,
+        'full_name': _fullNameController.text.trim(),
+        'nickname': _nicknameController.text.trim(),
         'role': _selectedRole,
+        'birth_date': _selectedDate?.toIso8601String(),
+        'blood_type': _selectedBloodType,
+        'photo_url': photoUrl,
         'family_id': familyId,
         'created_at': DateTime.now().toIso8601String(),
       });
 
-      // Tudo certo? Vai para a Home!
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const MainScreen()),
@@ -103,12 +169,22 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     }
   }
 
+  String _generateInviteCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    Random rnd = Random();
+    return String.fromCharCodes(
+      Iterable.generate(6, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final themeColor = Colors.purple;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Finalizar Cadastro"),
+        title: const Text("Criar Perfil"),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black,
@@ -116,95 +192,181 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Olá! Quem é você?",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-
-            // Apelido
-            TextField(
-              controller: _nicknameController,
-              decoration: const InputDecoration(
-                labelText: "Seu Nome ou Apelido",
-                border: OutlineInputBorder(),
+            // --- 1. FOTO DE PERFIL ---
+            GestureDetector(
+              onTap: _pickImage,
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  Container(
+                    width: 110,
+                    height: 110,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: themeColor.withOpacity(0.5),
+                        width: 2,
+                      ),
+                      image: (_webImageBytes != null)
+                          ? DecorationImage(
+                              image: MemoryImage(_webImageBytes!),
+                              fit: BoxFit.cover,
+                            )
+                          : (_mobileImageFile != null)
+                          ? DecorationImage(
+                              image: FileImage(_mobileImageFile!),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                    ),
+                    child: (_webImageBytes == null && _mobileImageFile == null)
+                        ? Icon(
+                            Icons.person_add,
+                            size: 50,
+                            color: Colors.grey[400],
+                          )
+                        : null,
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: themeColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
-
-            // Papel (Mãe ou Pai)
-            DropdownButtonFormField<String>(
-              value: _selectedRole,
-              decoration: const InputDecoration(
-                labelText: "Sou...",
-                border: OutlineInputBorder(),
-              ),
-              items: const [
-                DropdownMenuItem(value: 'mae', child: Text("Mamãe")),
-                DropdownMenuItem(value: 'pai', child: Text("Papai")),
-              ],
-              onChanged: (val) => setState(() => _selectedRole = val!),
+            const SizedBox(height: 10),
+            Text(
+              "Toque para adicionar foto",
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
             ),
+
             const SizedBox(height: 30),
 
-            // Alternar Criar/Entrar
+            // --- 2. DADOS PESSOAIS ---
+            _buildSectionTitle("Sobre Você"),
+
+            TextField(
+              controller: _fullNameController,
+              decoration: _inputDecoration("Nome Completo", Icons.person),
+            ),
+            const SizedBox(height: 15),
+
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _nicknameController,
+                    decoration: _inputDecoration("Apelido", Icons.face),
+                  ),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _selectedRole,
+                    decoration: _inputDecoration("Sou...", Icons.people),
+                    items: const [
+                      DropdownMenuItem(value: 'mae', child: Text("Mamãe")),
+                      DropdownMenuItem(value: 'pai', child: Text("Papai")),
+                    ],
+                    onChanged: (v) => setState(() => _selectedRole = v!),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 15),
+
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _birthDateController,
+                    readOnly: true,
+                    decoration: _inputDecoration(
+                      "Nascimento",
+                      Icons.calendar_today,
+                    ),
+                    onTap: () async {
+                      DateTime? picked = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime(1995),
+                        firstDate: DateTime(1950),
+                        lastDate: DateTime.now(),
+                      );
+                      if (picked != null) {
+                        setState(() {
+                          _selectedDate = picked;
+                          _birthDateController.text = DateFormat(
+                            'dd/MM/yyyy',
+                          ).format(picked);
+                        });
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _selectedBloodType,
+                    decoration: _inputDecoration("Sangue", Icons.water_drop),
+                    items: _bloodTypes
+                        .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                        .toList(),
+                    onChanged: (v) => setState(() => _selectedBloodType = v),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 30),
+
+            // --- 3. FAMÍLIA ---
+            _buildSectionTitle("Sua Família"),
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
                 color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(15),
                 border: Border.all(color: Colors.grey.shade200),
               ),
               child: Column(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: RadioListTile<bool>(
-                          title: const Text("Criar nova família"),
-                          subtitle: const Text(
-                            "Sou a primeira pessoa a baixar",
-                          ),
-                          value: false,
-                          groupValue: _isJoiningFamily,
-                          contentPadding: EdgeInsets.zero,
-                          onChanged: (val) =>
-                              setState(() => _isJoiningFamily = val!),
-                        ),
-                      ),
-                    ],
+                  RadioListTile<bool>(
+                    title: const Text("Criar nova família"),
+                    subtitle: const Text("Primeira pessoa a baixar"),
+                    value: false,
+                    groupValue: _isJoiningFamily,
+                    activeColor: themeColor,
+                    onChanged: (val) => setState(() => _isJoiningFamily = val!),
                   ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: RadioListTile<bool>(
-                          title: const Text("Entrar em família"),
-                          subtitle: const Text("Já tenho um código de convite"),
-                          value: true,
-                          groupValue: _isJoiningFamily,
-                          contentPadding: EdgeInsets.zero,
-                          onChanged: (val) =>
-                              setState(() => _isJoiningFamily = val!),
-                        ),
-                      ),
-                    ],
+                  RadioListTile<bool>(
+                    title: const Text("Entrar em família"),
+                    subtitle: const Text("Tenho um código de convite"),
+                    value: true,
+                    groupValue: _isJoiningFamily,
+                    activeColor: themeColor,
+                    onChanged: (val) => setState(() => _isJoiningFamily = val!),
                   ),
 
-                  // Campo do Código (Só aparece se for Entrar)
                   if (_isJoiningFamily)
                     Padding(
-                      padding: const EdgeInsets.only(top: 10),
+                      padding: const EdgeInsets.all(15),
                       child: TextField(
                         controller: _inviteCodeController,
                         textCapitalization: TextCapitalization.characters,
-                        decoration: const InputDecoration(
-                          labelText: "Digite o Código (6 letras)",
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.key),
-                          hintText: "Ex: A1B2C3",
-                        ),
+                        decoration: _inputDecoration(
+                          "Código da Família (6 letras)",
+                          Icons.key,
+                        ).copyWith(filled: true, fillColor: Colors.white),
                       ),
                     ),
                 ],
@@ -212,21 +374,68 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             ),
 
             const SizedBox(height: 30),
+
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 55,
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _submit,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purple,
+                  backgroundColor: themeColor,
                   foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  elevation: 5,
+                  shadowColor: themeColor.withOpacity(0.4),
                 ),
                 child: _isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text("Começar!", style: TextStyle(fontSize: 18)),
+                    : const Text(
+                        "Finalizar Cadastro",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
+            const SizedBox(height: 30),
           ],
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.purple, width: 2),
+      ),
+      prefixIcon: Icon(icon, color: Colors.grey),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.purple[800],
+          ),
         ),
       ),
     );
