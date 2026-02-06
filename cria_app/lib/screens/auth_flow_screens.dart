@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_screen.dart';
 import 'main_screen.dart';
+import 'profile_setup_screen.dart'; // Certifique-se de que esta tela existe
 
 class AuthGateScreen extends StatelessWidget {
   const AuthGateScreen({super.key});
@@ -11,16 +12,37 @@ class AuthGateScreen extends StatelessWidget {
     return StreamBuilder<AuthState>(
       stream: Supabase.instance.client.auth.onAuthStateChange,
       builder: (context, snapshot) {
-        // Verifica se existe uma sessão ativa
         final session = snapshot.data?.session;
 
-        if (session != null) {
-          // Se o usuário estiver logado, ele entra direto no App
-          return const MainScreen();
+        // 1. Se NÃO está logado, vai para o Login
+        if (session == null) {
+          return const LoginScreen();
         }
 
-        // Se NÃO estiver logado, ele vê a sua nova tela de login estilizada
-        return const LoginScreen();
+        // 2. Se ESTÁ logado, precisamos checar se o perfil existe no banco
+        return FutureBuilder(
+          future: Supabase.instance.client
+              .from('profiles')
+              .select()
+              .eq('id', session.user.id)
+              .maybeSingle(),
+          builder: (context, profileSnapshot) {
+            // Enquanto checa o banco, mostra um carregamento
+            if (profileSnapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            // 3. Se logou mas NÃO tem perfil (banco limpo), vai para Setup
+            if (profileSnapshot.data == null) {
+              return const ProfileSetupScreen();
+            }
+
+            // 4. Se logou e JÁ TEM perfil, vai para a MainScreen
+            return const MainScreen();
+          },
+        );
       },
     );
   }

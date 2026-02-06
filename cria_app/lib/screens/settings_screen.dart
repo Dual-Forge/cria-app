@@ -4,6 +4,8 @@ import 'package:flutter/services.dart'; // Para copiar e colar
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart'; // Para kIsWeb
+import 'package:intl/intl.dart';
+import 'package:flutter/painting.dart'; // <-- add
 
 class SettingsScreen extends StatefulWidget {
   final Color themeColor;
@@ -23,10 +25,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _nameController = TextEditingController();
   final _nicknameController = TextEditingController();
   final _addressController = TextEditingController();
-  final _bloodTypeController =
-      TextEditingController(); // Pode ser texto livre ou dropdown
+  final _bloodTypeController = TextEditingController();
   String? _photoUrl;
   String? _role;
+  DateTime? _dumDate; // Variável para a Data da Última Menstruação
 
   // --- DADOS DO BEBÊ (FAMÍLIA) ---
   final _babyNameController = TextEditingController();
@@ -40,6 +42,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _loadAllData();
+  }
+
+  // Lógica para calcular semanas e dias a partir da DUM
+  Map<String, int> calcularIdadeGestacional(DateTime? dum) {
+    if (dum == null) return {'semanas': 0, 'dias': 0};
+    final hoje = DateTime.now();
+    final diferencaEmDias = hoje.difference(dum).inDays;
+    return {'semanas': diferencaEmDias ~/ 7, 'dias': diferencaEmDias % 7};
+  }
+
+  String _withCacheBuster(String url) {
+    final uri = Uri.parse(url);
+    if (uri.hasQuery) return url;
+    return '$url?v=${DateTime.now().millisecondsSinceEpoch}';
   }
 
   Future<void> _loadAllData() async {
@@ -56,7 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           .eq('id', user.id)
           .single();
 
-      // 2. Carrega Família (para nome do bebê e tema)
+      // 2. Carrega Família
       _familyId = myProfile['family_id'];
       Map<String, dynamic>? familyData;
 
@@ -67,13 +83,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             .eq('id', _familyId!)
             .single();
 
-        // 3. Carrega o Parceiro (Alguém da mesma família que NÃO sou eu)
+        // 3. Carrega o Parceiro
         final partners = await client
             .from('profiles')
             .select()
             .eq('family_id', _familyId!)
-            .neq('id', user.id) // Diferente de mim
-            .limit(1); // Pega o primeiro que achar
+            .neq('id', user.id)
+            .limit(1);
 
         if (partners.isNotEmpty) {
           _partnerProfile = partners.first;
@@ -82,17 +98,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       if (mounted) {
         setState(() {
-          // Set User
           _nameController.text = myProfile['full_name'] ?? '';
           _nicknameController.text = myProfile['nickname'] ?? '';
           _addressController.text = myProfile['address'] ?? '';
           _bloodTypeController.text = myProfile['blood_type'] ?? '';
           _photoUrl = myProfile['photo_url'];
-          _role = myProfile['role'];
-          if (_photoUrl != null)
-            _photoUrl = "$_photoUrl?v=${DateTime.now().millisecondsSinceEpoch}";
 
-          // Set Baby
+          if (_photoUrl != null) {
+            _photoUrl = _withCacheBuster(_photoUrl!);
+          }
+
+          _role = myProfile['role'];
+
+          // Carregar a DUM se existir
+          if (myProfile['dum_date'] != null) {
+            _dumDate = DateTime.parse(myProfile['dum_date']);
+          }
+
           if (familyData != null) {
             _babyNameController.text = familyData['baby_name'] ?? 'Bebê';
             _babyGender = familyData['baby_gender'] ?? 'neutro';
@@ -107,7 +129,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  // --- SALVAR PERFIL DO USUÁRIO ---
+  // --- SELECIONAR DUM ---
+  Future<void> _selectDumDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _dumDate ?? DateTime.now(),
+      firstDate: DateTime(2024, 1, 1),
+      lastDate: DateTime.now(),
+      locale: const Locale('pt', 'BR'),
+    );
+
+    if (picked != null) {
+      setState(() => _isLoading = true);
+      try {
+        final user = Supabase.instance.client.auth.currentUser;
+        await Supabase.instance.client
+            .from('profiles')
+            .update({'dum_date': picked.toIso8601String().split('T')[0]})
+            .eq('id', user!.id);
+
+        setState(() {
+          _dumDate = picked;
+          _isLoading = false;
+        });
+      } catch (e) {
+        setState(() => _isLoading = false);
+        print("Erro ao salvar DUM: $e");
+      }
+    }
+  }
+
   Future<void> _saveUserProfile() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
@@ -127,20 +178,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _isEditingProfile = false;
         _isLoading = false;
       });
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text("Perfil atualizado!")));
+      }
     } catch (e) {
       setState(() => _isLoading = false);
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text("Erro: $e")));
+      }
     }
   }
 
-  // --- SALVAR DADOS DO BEBÊ (TEMA) ---
   Future<void> _saveBabyData() async {
     if (_familyId == null) return;
     setState(() => _isLoading = true);
@@ -154,26 +206,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
           .eq('id', _familyId!);
 
       setState(() => _isLoading = false);
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Dados do bebê atualizados!")),
         );
+      }
     } catch (e) {
       setState(() => _isLoading = false);
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text("Erro: $e")));
+      }
     }
   }
 
-  // --- UPLOAD FOTO ---
   Future<void> _pickAndUploadImage() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(
       source: ImageSource.gallery,
       imageQuality: 50,
     );
+
     if (picked == null) return;
 
     setState(() => _isUploading = true);
@@ -181,19 +235,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       final bytes = await picked.readAsBytes();
-      final fileExt = picked.path.split('.').last;
-      final fileName =
-          '${user!.id}/profile_avatar.${fileExt}'; // Sobrescreve sempre o mesmo arquivo para economizar espaço
+
+      // Na Web, usamos o 'name' para pegar a extensão, pois o 'path' é virtual
+      final String fileExt = picked.name.split('.').last.toLowerCase();
+      final String fileName = '${user!.id}/profile_avatar.$fileExt';
+
+      // Forçamos um contentType limpo para evitar o erro 'image/app/...'
+      final String contentType = 'image/$fileExt';
 
       await Supabase.instance.client.storage
-          .from('diary_photos') // Usando mesmo bucket por simplicidade
+          .from('diary_photos')
           .uploadBinary(
             fileName,
             bytes,
-            fileOptions: FileOptions(
-              contentType: 'image/$fileExt',
-              upsert: true,
-            ),
+            fileOptions: FileOptions(contentType: contentType, upsert: true),
           );
 
       final imageUrl = Supabase.instance.client.storage
@@ -207,13 +262,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       if (mounted) {
         setState(() {
+          // Timestamp para limpar o cache do navegador
           _photoUrl = "$imageUrl?v=${DateTime.now().millisecondsSinceEpoch}";
           _isUploading = false;
         });
       }
     } catch (e) {
       print("Erro upload: $e");
-      setState(() => _isUploading = false);
+      if (mounted) setState(() => _isUploading = false);
     }
   }
 
@@ -247,9 +303,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ============================================
-            // 1. CARD MEU PERFIL (FOTO ESQUERDA, DADOS DIREITA)
-            // ============================================
             const Padding(
               padding: EdgeInsets.only(left: 8, bottom: 8),
               child: Text(
@@ -272,7 +325,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // ESQUERDA: FOTO
                         Column(
                           children: [
                             Stack(
@@ -341,10 +393,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ],
                         ),
-
                         const SizedBox(width: 20),
-
-                        // DIREITA: CAMPOS EDITÁVEIS
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -369,13 +418,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 _isEditingProfile,
                                 Icons.bloodtype,
                               ),
+
+                              // --- SEÇÃO GESTAÇÃO (SÓ PARA MÃE) ---
+                              if (_role == 'mae') ...[
+                                const SizedBox(height: 15),
+                                const Divider(),
+                                Builder(
+                                  builder: (context) {
+                                    final gest = calcularIdadeGestacional(
+                                      _dumDate,
+                                    );
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _dumDate == null
+                                              ? "DUM não definida"
+                                              : "${gest['semanas']} semanas e ${gest['dias']} dias",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: widget.themeColor,
+                                          ),
+                                        ),
+                                        TextButton.icon(
+                                          onPressed: () =>
+                                              _selectDumDate(context),
+                                          icon: const Icon(
+                                            Icons.calendar_month,
+                                            size: 16,
+                                          ),
+                                          label: Text(
+                                            _dumDate == null
+                                                ? "Definir DUM"
+                                                : "Alterar DUM",
+                                          ),
+                                          style: TextButton.styleFrom(
+                                            padding: EdgeInsets.zero,
+                                            minimumSize: Size.zero,
+                                            tapTargetSize: MaterialTapTargetSize
+                                                .shrinkWrap,
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ],
                             ],
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 10),
-                    // BOTÃO EDITAR / SALVAR
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
@@ -401,9 +496,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             const SizedBox(height: 25),
 
-            // ============================================
-            // 2. CARD DO PARCEIRO (APENAS VISUALIZAR E COPIAR)
-            // ============================================
             if (_partnerProfile != null) ...[
               const Padding(
                 padding: EdgeInsets.only(left: 8, bottom: 8),
@@ -487,9 +579,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 25),
             ],
 
-            // ============================================
-            // 3. CONFIGURAÇÕES DO BEBÊ (TEMA E NOME)
-            // ============================================
             const Padding(
               padding: EdgeInsets.only(left: 8, bottom: 8),
               child: Text(
@@ -521,7 +610,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     DropdownButtonFormField<String>(
                       value: _babyGender,
                       decoration: const InputDecoration(
-                        labelText: "Sexo do Bebê (Define a Cor)",
+                        labelText: "Sexo do Bebê",
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.palette),
                       ),
@@ -560,9 +649,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
 
+            // --- CÓDIGO DE CONVITE ---
+            FutureBuilder(
+              future: Supabase.instance.client
+                  .from('profiles')
+                  .select('family_id, families(invite_code)')
+                  .eq('id', Supabase.instance.client.auth.currentUser!.id)
+                  .single(),
+              builder: (context, AsyncSnapshot snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting)
+                  return const SizedBox.shrink();
+                if (snapshot.hasError ||
+                    snapshot.data == null ||
+                    snapshot.data['families'] == null)
+                  return const SizedBox.shrink();
+
+                final String inviteCode = snapshot
+                    .data['families']['invite_code']
+                    .toString();
+
+                return ListTile(
+                  leading: const Icon(Icons.share, color: Colors.purple),
+                  title: const Text("Código de Convite"),
+                  subtitle: Text(
+                    inviteCode,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.copy),
+                    onPressed: () =>
+                        _copyToClipboard("Código de convite", inviteCode),
+                  ),
+                );
+              },
+            ),
+
             const SizedBox(height: 40),
 
-            // BOTÃO SAIR
             Center(
               child: TextButton.icon(
                 onPressed: () async {
@@ -584,9 +707,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // --- WIDGETS AUXILIARES ---
-
-  // Campo editável do usuário
   Widget _buildEditableField(
     String label,
     TextEditingController controller,
@@ -635,7 +755,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // Linha de informação do parceiro com botão copiar
   Widget _buildPartnerInfoRow(IconData icon, String label, String? value) {
     if (value == null || value.isEmpty) return const SizedBox.shrink();
     return Padding(
@@ -665,9 +784,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           IconButton(
             icon: const Icon(Icons.copy, size: 18, color: Colors.grey),
             onPressed: () => _copyToClipboard(label, value),
-            tooltip: "Copiar $label",
-            constraints: const BoxConstraints(), // Remove padding extra
             padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
           ),
         ],
       ),

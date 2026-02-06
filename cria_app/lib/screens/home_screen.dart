@@ -82,12 +82,13 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
     }
   }
 
-  int get _weeksPregnancy {
-    if (widget.dumDate == null) return 0;
+  // Função auxiliar para calcular semanas baseada em uma data
+  int _calculateWeeks(DateTime? dum) {
+    if (dum == null) return 0;
     final now = DateTime.now();
-    final diff = now.difference(widget.dumDate!);
+    final diff = now.difference(dum);
     int w = (diff.inDays / 7).floor();
-    return w > 42 ? 42 : w;
+    return w > 42 ? 42 : (w < 0 ? 0 : w);
   }
 
   List<Map<String, dynamic>> _getEventsForDay(DateTime day) {
@@ -176,41 +177,50 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
 
   // --- ABA 1: VISÃO GERAL ---
   Widget _buildOverviewTab() {
-    final babyData = BabyData.getData(_weeksPregnancy);
-    final tips = _getTipsForWeek(_weeksPregnancy);
-
     String centerName =
         widget.babyName?.toUpperCase() ??
         (widget.babyGender == 'menino'
             ? "MENINO"
             : (widget.babyGender == 'menina' ? "MENINA" : "BEBÊ"));
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          StreamBuilder<List<Map<String, dynamic>>>(
-            stream: widget.familyId != null
-                ? Supabase.instance.client
-                      .from('profiles')
-                      .stream(primaryKey: ['id'])
-                      .eq('family_id', widget.familyId!)
-                : const Stream.empty(),
-            builder: (context, snapshot) {
-              Map<String, dynamic>? momProfile;
-              Map<String, dynamic>? dadProfile;
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: widget.familyId != null
+          ? Supabase.instance.client
+                .from('profiles')
+                .stream(primaryKey: ['id'])
+                .eq('family_id', widget.familyId!)
+          : const Stream.empty(),
+      builder: (context, snapshot) {
+        Map<String, dynamic>? momProfile;
+        Map<String, dynamic>? dadProfile;
+        int currentWeeks = 0;
 
-              if (snapshot.hasData) {
-                final profiles = snapshot.data!;
-                try {
-                  momProfile = profiles.firstWhere((p) => p['role'] == 'mae');
-                } catch (_) {}
-                try {
-                  dadProfile = profiles.firstWhere((p) => p['role'] == 'pai');
-                } catch (_) {}
-              }
+        if (snapshot.hasData) {
+          final profiles = snapshot.data!;
+          try {
+            momProfile = profiles.firstWhere((p) => p['role'] == 'mae');
+            // Busca a DUM atualizada do perfil da mãe no Stream
+            if (momProfile['dum_date'] != null) {
+              currentWeeks = _calculateWeeks(
+                DateTime.parse(momProfile['dum_date']),
+              );
+            }
+          } catch (_) {
+            currentWeeks = _calculateWeeks(widget.dumDate);
+          }
+          try {
+            dadProfile = profiles.firstWhere((p) => p['role'] == 'pai');
+          } catch (_) {}
+        }
 
-              return Container(
+        final babyData = BabyData.getData(currentWeeks);
+        final tips = _getTipsForWeek(currentWeeks);
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Container(
                 padding: const EdgeInsets.symmetric(
                   vertical: 15,
                   horizontal: 20,
@@ -257,175 +267,181 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                     _buildAvatarLarge(momProfile, Colors.pink, "Mãe"),
                   ],
                 ),
-              );
-            },
-          ),
+              ),
 
-          const SizedBox(height: 25),
+              const SizedBox(height: 25),
 
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(25),
-              boxShadow: [
-                BoxShadow(
-                  color: widget.themeColor.withOpacity(0.3),
-                  blurRadius: 15,
-                  offset: const Offset(0, 8),
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(25),
+                  boxShadow: [
+                    BoxShadow(
+                      color: widget.themeColor.withOpacity(0.3),
+                      blurRadius: 15,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        widget.themeColor.withOpacity(0.85),
-                        widget.themeColor,
-                      ],
-                    ),
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(25),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Semana $_weeksPregnancy",
-                              style: const TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              "Tamanho: ${babyData['fruit']}",
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              "Peso aprox: ${babyData['weight']}",
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
-                              ),
-                            ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            widget.themeColor.withOpacity(0.85),
+                            widget.themeColor,
                           ],
                         ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          shape: BoxShape.circle,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(25),
                         ),
-                        child: const Text("🍎", style: TextStyle(fontSize: 40)),
                       ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: widget.themeColor.withOpacity(0.05),
-                    borderRadius: const BorderRadius.vertical(
-                      bottom: Radius.circular(25),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                      child: Row(
                         children: [
-                          Icon(Icons.pregnant_woman, color: widget.themeColor),
-                          const SizedBox(width: 8),
-                          Text(
-                            "O Corpo da Mamãe",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: widget.themeColor,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Semana $currentWeeks",
+                                  style: const TextStyle(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 5),
+                                Text(
+                                  "Tamanho: ${babyData['fruit']}",
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  "Peso aprox: ${babyData['weight']}",
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Text(
+                              "🍎",
+                              style: TextStyle(fontSize: 40),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                        tips['body']!,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          height: 1.4,
-                          color: Colors.black87,
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: widget.themeColor.withOpacity(0.05),
+                        borderRadius: const BorderRadius.vertical(
+                          bottom: Radius.circular(25),
                         ),
                       ),
-                    ],
-                  ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.pregnant_woman,
+                                color: widget.themeColor,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                "O Corpo da Mamãe",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: widget.themeColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            tips['body']!,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              height: 1.4,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 25),
-          Row(
-            children: [
-              Icon(Icons.auto_awesome, color: widget.themeColor),
-              const SizedBox(width: 8),
-              const Text(
-                "Dicas Rápidas",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
+
+              const SizedBox(height: 25),
+              Row(
+                children: [
+                  Icon(Icons.auto_awesome, color: widget.themeColor),
+                  const SizedBox(width: 8),
+                  const Text(
+                    "Dicas Rápidas",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 15),
+
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                childAspectRatio: 0.85,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                children: [
+                  _buildInfoCard(
+                    Icons.restaurant,
+                    "Nutrição",
+                    tips['diet']!,
+                    Colors.orange,
+                  ),
+                  _buildInfoCard(
+                    Icons.directions_walk,
+                    "Movimento",
+                    tips['exercise']!,
+                    Colors.blue,
+                  ),
+                  _buildInfoCard(
+                    Icons.self_improvement,
+                    "Bem-estar",
+                    tips['mental']!,
+                    Colors.purple,
+                  ),
+                  _buildInfoCard(
+                    Icons.child_care,
+                    "Foco no Bebê",
+                    tips['baby']!,
+                    Colors.pink,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
             ],
           ),
-          const SizedBox(height: 15),
-
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            childAspectRatio: 0.85,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            children: [
-              _buildInfoCard(
-                Icons.restaurant,
-                "Nutrição",
-                tips['diet']!,
-                Colors.orange,
-              ),
-              _buildInfoCard(
-                Icons.directions_walk,
-                "Movimento",
-                tips['exercise']!,
-                Colors.blue,
-              ),
-              _buildInfoCard(
-                Icons.self_improvement,
-                "Bem-estar",
-                tips['mental']!,
-                Colors.purple,
-              ),
-              _buildInfoCard(
-                Icons.child_care,
-                "Foco no Bebê",
-                tips['baby']!,
-                Colors.pink,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -889,7 +905,6 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
     );
   }
 
-  // --- NOVA CONSULTA (CORRIGIDA) ---
   void _showAddAppointmentSheet(String familyId) {
     final titleController = TextEditingController();
     final doctorController = TextEditingController();
@@ -898,7 +913,6 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
     DateTime selectedDate = _selectedDay ?? DateTime.now();
     TimeOfDay selectedTime = TimeOfDay.now();
 
-    // Usa a lista carregada no initState, se estiver vazia usa o padrão
     List<String> currentPatients = _patientsList.isNotEmpty
         ? _patientsList
         : ['Bebê'];
@@ -953,8 +967,6 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  // DROPDOWN PACIENTE (Agora com a lista certa)
                   DropdownButtonFormField<String>(
                     value: selectedPatient,
                     decoration: const InputDecoration(
@@ -967,12 +979,11 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                         .toList(),
                     onChanged: (v) => setStateModal(() => selectedPatient = v),
                   ),
-
                   const SizedBox(height: 10),
                   TextField(
                     controller: titleController,
                     decoration: const InputDecoration(
-                      labelText: "Especialidade (Ex: Obstetra)",
+                      labelText: "Especialidade",
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.star),
                     ),
@@ -990,7 +1001,7 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                   TextField(
                     controller: addressController,
                     decoration: const InputDecoration(
-                      labelText: "Endereço / Local",
+                      labelText: "Local",
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.location_on),
                     ),
@@ -1042,11 +1053,6 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                     ),
                   ),
                   const SizedBox(height: 15),
-                  const Text(
-                    "Anexo (Receita/Pedido)",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
                   if (mobileImageFile != null || webImageBytes != null)
                     Stack(
                       alignment: Alignment.topRight,
@@ -1105,8 +1111,6 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                       ],
                     ),
                   const SizedBox(height: 20),
-
-                  // BOTÃO SALVAR (Com Try/Catch e Feedback)
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -1114,64 +1118,29 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                       onPressed: isUploading
                           ? null
                           : () async {
-                              // Validação Simples
-                              if (titleController.text.isEmpty) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text("Preencha a especialidade!"),
-                                  ),
-                                );
-                                return;
-                              }
-
+                              if (titleController.text.isEmpty) return;
                               setStateModal(() => isUploading = true);
-
                               try {
                                 final user =
                                     Supabase.instance.client.auth.currentUser;
                                 String? uploadedUrl;
-
-                                // Upload Imagem
                                 if (mobileImageFile != null ||
                                     webImageBytes != null) {
-                                  try {
-                                    final fileName =
-                                        'docs/${user!.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-                                    if (kIsWeb && webImageBytes != null) {
-                                      await Supabase.instance.client.storage
-                                          .from('diary_photos')
-                                          .uploadBinary(
-                                            fileName,
-                                            webImageBytes!,
-                                            fileOptions: const FileOptions(
-                                              contentType: 'image/jpeg',
-                                            ),
-                                          );
-                                    } else if (mobileImageFile != null) {
-                                      await Supabase.instance.client.storage
-                                          .from('diary_photos')
-                                          .upload(fileName, mobileImageFile!);
-                                    }
-                                    uploadedUrl = Supabase
-                                        .instance
-                                        .client
-                                        .storage
+                                  final fileName =
+                                      'docs/${user!.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+                                  if (kIsWeb) {
+                                    await Supabase.instance.client.storage
                                         .from('diary_photos')
-                                        .getPublicUrl(fileName);
-                                  } catch (e) {
-                                    print("Erro foto (ignorado): $e");
+                                        .uploadBinary(fileName, webImageBytes!);
+                                  } else {
+                                    await Supabase.instance.client.storage
+                                        .from('diary_photos')
+                                        .upload(fileName, mobileImageFile!);
                                   }
+                                  uploadedUrl = Supabase.instance.client.storage
+                                      .from('diary_photos')
+                                      .getPublicUrl(fileName);
                                 }
-
-                                final finalDate = DateTime(
-                                  selectedDate.year,
-                                  selectedDate.month,
-                                  selectedDate.day,
-                                  selectedTime.hour,
-                                  selectedTime.minute,
-                                );
-
-                                // Insert Seguro
                                 await Supabase.instance.client
                                     .from('appointments')
                                     .insert({
@@ -1180,19 +1149,19 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                                       'doctor_name': doctorController.text,
                                       'address': addressController.text,
                                       'notes': notesController.text,
-                                      'appointment_date': finalDate
-                                          .toIso8601String(),
+                                      'appointment_date': DateTime(
+                                        selectedDate.year,
+                                        selectedDate.month,
+                                        selectedDate.day,
+                                        selectedTime.hour,
+                                        selectedTime.minute,
+                                      ).toIso8601String(),
                                       'patient_name': selectedPatient,
                                       'photo_url': uploadedUrl,
                                     });
-
                                 if (mounted) Navigator.pop(context);
                               } catch (e) {
-                                print("ERRO AO SALVAR CONSULTA: $e");
                                 setStateModal(() => isUploading = false);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text("Erro ao salvar: $e")),
-                                );
                               }
                             },
                       style: ElevatedButton.styleFrom(
@@ -1219,33 +1188,22 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
     String label,
   ) {
     String? photo = profile?['photo_url'];
-    if (photo != null) {
-      final uniqueId = DateTime.now().millisecondsSinceEpoch.toString();
-      photo = "$photo?v=$uniqueId";
-    }
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: color.withOpacity(0.3), width: 2),
-          ),
-          child: CircleAvatar(
-            radius: 32,
-            backgroundColor: color.withOpacity(0.1),
-            backgroundImage: photo != null ? NetworkImage(photo) : null,
-            child: photo == null
-                ? Text(
-                    profile?['nickname']?[0].toUpperCase() ?? label[0],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                      color: color,
-                    ),
-                  )
-                : null,
-          ),
+        CircleAvatar(
+          radius: 32,
+          backgroundColor: color.withOpacity(0.1),
+          backgroundImage: photo != null ? NetworkImage(photo) : null,
+          child: photo == null
+              ? Text(
+                  profile?['nickname']?[0].toUpperCase() ?? label[0],
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    color: color,
+                  ),
+                )
+              : null,
         ),
         const SizedBox(height: 5),
         Text(

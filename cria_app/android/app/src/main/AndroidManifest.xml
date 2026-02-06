@@ -8,7 +8,8 @@
         android:label="cria_app"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
-        android:usesCleartextTraffic="true">  <activity
+        android:usesCleartextTraffic="true">  
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
@@ -17,14 +18,24 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
+            
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="io.supabase.flutter" android:host="login-callback" />
+            </intent-filter>
+
         </activity>
         <meta-data
             android:name="flutterEmbedding"
