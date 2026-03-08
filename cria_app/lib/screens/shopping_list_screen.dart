@@ -1,4 +1,4 @@
-import 'dart:io';
+// import 'dart:io'; // Removed for Web compatibility
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
@@ -109,6 +109,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
 
   // --- CORREÇÃO 1: CARREGAMENTO AUTOMÁTICO (Scraping) ---
   Future<Map<String, String>> _scrapeLink(String url) async {
+    if (kIsWeb) return {}; // Disable scraping on Web to prevent CORS crashes
     try {
       final uri = Uri.parse(url);
 
@@ -164,13 +165,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   }
 
   // --- CORREÇÃO 2: CHECKBOX E ATUALIZAÇÃO ---
-  Future<void> _toggleItem(String itemId, bool currentVal) async {
-    // Inverte o valor atual e salva no banco
-    await Supabase.instance.client
-        .from('items')
-        .update({'is_purchased': !currentVal})
-        .eq('id', itemId);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -236,20 +230,23 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
               children: [
                 // CARD FINANCEIRO
                 Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.only(
+                    top: 60,
+                    bottom: 20,
+                    left: 20,
+                    right: 20,
+                  ),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [themeColor.withOpacity(0.7), themeColor],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(30),
+                      bottomRight: Radius.circular(30),
                     ),
-                    borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: themeColor.withOpacity(0.4),
-                        blurRadius: 12,
-                        offset: const Offset(0, 6),
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
                       ),
                     ],
                   ),
@@ -258,90 +255,118 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _selectedAgeFilter == 'Todos'
-                                      ? "Enxoval Completo"
-                                      : "Filtro: $_selectedAgeFilter",
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const SizedBox(height: 5),
-                                Text(
-                                  "${(itemsProgress * 100).toInt()}% Concluído",
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Stack(
-                            alignment: Alignment.center,
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              CircularPercentIndicator(
-                                radius: 35.0,
-                                lineWidth: 6.0,
-                                percent: itemsProgress,
-                                backgroundColor: Colors.white24,
-                                progressColor: Colors.white,
-                                animation: true,
-                                animateFromLastPercent: true,
+                              Text(
+                                "Seu Enxoval",
+                                style: TextStyle(
+                                  color: Colors.grey[800],
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: -0.5,
+                                ),
                               ),
-                              Icon(
-                                Icons.check,
-                                color: Colors.white.withOpacity(0.9),
-                                size: 24,
+                              const SizedBox(height: 5),
+                              Text(
+                                _selectedAgeFilter == 'Todos'
+                                    ? "Progresso Geral"
+                                    : "Filtro: $_selectedAgeFilter",
+                                style: TextStyle(
+                                  color: Colors.grey[500],
+                                  fontSize: 16,
+                                ),
                               ),
                             ],
                           ),
+                          CircularPercentIndicator(
+                            radius: 40.0,
+                            lineWidth: 8.0,
+                            percent: itemsProgress,
+                            backgroundColor: Colors.grey[100]!,
+                            progressColor: themeColor,
+                            circularStrokeCap: CircularStrokeCap.round,
+                            animation: true,
+                            center: Text(
+                              "${(itemsProgress * 100).toInt()}%",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: themeColor,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 25),
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(15),
+                          color: themeColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  "Gasto: R\$ ${totalSpent.toStringAsFixed(2)}",
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                Text(
-                                  "Total: R\$ ${totalEstimatedCost.toStringAsFixed(2)}",
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(5),
-                              child: LinearProgressIndicator(
-                                value: financialProgress,
-                                backgroundColor: Colors.white24,
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
                                 color: Colors.white,
-                                minHeight: 8,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: themeColor.withValues(alpha: 0.2),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                Icons.attach_money,
+                                color: themeColor,
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Investimento Total",
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "R\$ ${totalSpent.toStringAsFixed(2)}",
+                                    style: TextStyle(
+                                      color: Colors.grey[900],
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 22,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: LinearProgressIndicator(
+                                      value: financialProgress.clamp(0.0, 1.0),
+                                      backgroundColor: Colors.white,
+                                      color: themeColor,
+                                      minHeight: 6,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "de R\$ ${totalEstimatedCost.toStringAsFixed(2)} planejado",
+                                    style: TextStyle(
+                                      color: Colors.grey[500],
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -455,23 +480,46 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     );
   }
 
-  void _showAddItemSheet(BuildContext context, String initialCategory) {
-    final nameController = TextEditingController();
-    final priceController = TextEditingController();
-    final noteController = TextEditingController();
-    final linkController = TextEditingController();
+  void _showAddItemSheet(
+    BuildContext context,
+    String initialCategory, {
+    Map<String, dynamic>? itemToEdit,
+  }) {
+    final nameController = TextEditingController(text: itemToEdit?['name']);
+    final priceController = TextEditingController(
+      text: itemToEdit?['price']?.toString(),
+    );
+    final noteController = TextEditingController(text: itemToEdit?['notes']);
+    final linkController = TextEditingController(text: itemToEdit?['link_url']);
 
-    String selectedCategory = initialCategory;
-    String? selectedAge;
+    String selectedCategory = itemToEdit?['category'] ?? initialCategory;
+    String? selectedAge = itemToEdit?['age_range'];
+
+    // Ensure selectedCategory is valid
+    if (!_categoriesConfig.any((c) => c['name'] == selectedCategory)) {
+      selectedCategory = _categoriesConfig[0]['name'];
+    }
+
     List<String> categories = _categoriesConfig
         .map((e) => e['name'] as String)
         .toList();
     List<String> agesForSelect = _ageFilters
         .where((a) => a != 'Todos')
         .toList();
-    File? imageFile;
-    Uint8List? webImageBytes;
-    String? scrapedImageUrl;
+
+    // Safety check: Ensure selectedCategory exists in the list
+    if (!categories.contains(selectedCategory)) {
+      selectedCategory = categories.isNotEmpty ? categories[0] : 'Higiene';
+    }
+
+    // Safety check: Ensure selectedAge exists in the list or is null
+    if (selectedAge != null && !agesForSelect.contains(selectedAge)) {
+      selectedAge = null;
+    }
+
+    // XFile? imageFile; // Removed unused
+    Uint8List? imageBytes;
+    String? scrapedImageUrl = itemToEdit?['image_url'];
     bool isUploading = false;
     bool isScraping = false;
 
@@ -511,36 +559,42 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                 imageQuality: 50,
               );
               if (picked != null) {
-                if (kIsWeb) {
-                  final bytes = await picked.readAsBytes();
-                  setStateSheet(() => webImageBytes = bytes);
-                } else {
-                  setStateSheet(() => imageFile = File(picked.path));
-                }
+                final bytes = await picked.readAsBytes();
+                setStateSheet(() {
+                  // imageFile = picked;
+                  imageBytes = bytes;
+                });
               }
             }
 
-            return DraggableScrollableSheet(
-              initialChildSize: 0.85,
-              minChildSize: 0.5,
-              maxChildSize: 0.95,
-              builder: (_, controller) {
-                return Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(25),
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 50,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  padding: EdgeInsets.fromLTRB(
-                    24,
-                    24,
-                    24,
-                    MediaQuery.of(context).viewInsets.bottom + 24,
-                  ),
-                  child: ListView(
-                    controller: controller,
-                    children: [
+                  Expanded(
+                    child: ListView(
+                      controller: ScrollController(),
+                      padding: EdgeInsets.fromLTRB(
+                        24,
+                        12,
+                        24,
+                        MediaQuery.of(context).viewInsets.bottom + 24,
+                      ),
+                      children: [
+                        /*
                       Center(
                         child: Container(
                           width: 50,
@@ -551,316 +605,330 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      Text(
-                        "Novo Item",
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: widget.currentTheme,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: widget.currentTheme.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(
-                            color: widget.currentTheme.withOpacity(0.3),
+                      */
+                        const SizedBox(height: 20),
+                        Text(
+                          itemToEdit != null ? "Editar Item" : "Novo Item",
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: widget.currentTheme,
                           ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        const SizedBox(height: 20),
+
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: widget.currentTheme.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(
+                              color: widget.currentTheme.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "Possui o link da loja?",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: linkController,
+                                      decoration: const InputDecoration(
+                                        hintText: "Cole o link aqui...",
+                                        border: InputBorder.none,
+                                        isDense: true,
+                                      ),
+                                    ),
+                                  ),
+                                  if (isScraping)
+                                    const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  else
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.auto_awesome,
+                                        color: Colors.amber,
+                                      ),
+                                      onPressed: autoFillFromLink,
+                                      tooltip: "Preencher Automático",
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        TextField(
+                          controller: nameController,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: const InputDecoration(
+                            labelText: "Nome do Produto",
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 15),
+                        Row(
                           children: [
-                            const Text(
-                              "Possui o link da loja?",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                value: selectedCategory,
+                                decoration: const InputDecoration(
+                                  labelText: "Categoria",
+                                  border: OutlineInputBorder(),
+                                ),
+                                items: categories
+                                    .map(
+                                      (c) => DropdownMenuItem(
+                                        value: c,
+                                        child: Text(c),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (v) =>
+                                    setStateSheet(() => selectedCategory = v!),
                               ),
                             ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: linkController,
-                                    decoration: const InputDecoration(
-                                      hintText: "Cole o link aqui...",
-                                      border: InputBorder.none,
-                                      isDense: true,
-                                    ),
-                                  ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: priceController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: "Valor (R\$)",
+                                  border: OutlineInputBorder(),
                                 ),
-                                if (isScraping)
-                                  const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                else
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.auto_awesome,
-                                      color: Colors.amber,
-                                    ),
-                                    onPressed: autoFillFromLink,
-                                    tooltip: "Preencher Automático",
-                                  ),
-                              ],
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      TextField(
-                        controller: nameController,
-                        textCapitalization: TextCapitalization.sentences,
-                        decoration: const InputDecoration(
-                          labelText: "Nome do Produto",
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 15),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: selectedCategory,
-                              decoration: const InputDecoration(
-                                labelText: "Categoria",
-                                border: OutlineInputBorder(),
-                              ),
-                              items: categories
-                                  .map(
-                                    (c) => DropdownMenuItem(
-                                      value: c,
-                                      child: Text(c),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (v) =>
-                                  setStateSheet(() => selectedCategory = v!),
-                            ),
+                        const SizedBox(height: 15),
+                        DropdownButtonFormField<String>(
+                          value: selectedAge,
+                          decoration: const InputDecoration(
+                            labelText: "Faixa Etária (Opcional)",
+                            border: OutlineInputBorder(),
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: TextField(
-                              controller: priceController,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: "Valor (R\$)",
-                                border: OutlineInputBorder(),
-                              ),
-                            ),
+                          items: agesForSelect
+                              .map(
+                                (c) =>
+                                    DropdownMenuItem(value: c, child: Text(c)),
+                              )
+                              .toList(),
+                          onChanged: (v) =>
+                              setStateSheet(() => selectedAge = v),
+                          hint: const Text("Selecione se quiser"),
+                        ),
+                        const SizedBox(height: 15),
+                        TextField(
+                          controller: noteController,
+                          maxLines: 2,
+                          decoration: const InputDecoration(
+                            labelText: "Observações",
+                            border: OutlineInputBorder(),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 15),
-                      DropdownButtonFormField<String>(
-                        value: selectedAge,
-                        decoration: const InputDecoration(
-                          labelText: "Faixa Etária (Opcional)",
-                          border: OutlineInputBorder(),
                         ),
-                        items: agesForSelect
-                            .map(
-                              (c) => DropdownMenuItem(value: c, child: Text(c)),
-                            )
-                            .toList(),
-                        onChanged: (v) => setStateSheet(() => selectedAge = v),
-                        hint: const Text("Selecione se quiser"),
-                      ),
-                      const SizedBox(height: 15),
-                      TextField(
-                        controller: noteController,
-                        maxLines: 2,
-                        decoration: const InputDecoration(
-                          labelText: "Observações",
-                          border: OutlineInputBorder(),
+                        const SizedBox(height: 20),
+                        const Text(
+                          "Foto",
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        "Foto",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          GestureDetector(
-                            onTap: () => pickImage(ImageSource.gallery),
-                            child: Container(
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                color: Colors.grey[100],
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.grey.shade300),
-                              ),
-                              child:
-                                  (imageFile != null || webImageBytes != null)
-                                  ? ClipRRect(
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: kIsWeb && webImageBytes != null
-                                          ? Image.memory(
-                                              webImageBytes!,
-                                              fit: BoxFit.cover,
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            GestureDetector(
+                              onTap: () => pickImage(ImageSource.gallery),
+                              child: Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: Colors.grey.shade300,
+                                  ),
+                                ),
+                                child: (imageBytes != null)
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: Image.memory(
+                                          imageBytes!,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      )
+                                    : (scrapedImageUrl != null &&
+                                              scrapedImageUrl!.isNotEmpty
+                                          ? ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              child: Image.network(
+                                                scrapedImageUrl!,
+                                                fit: BoxFit.cover,
+                                              ),
                                             )
-                                          : Image.file(
-                                              imageFile!,
-                                              fit: BoxFit.cover,
-                                            ),
-                                    )
-                                  : (scrapedImageUrl != null &&
-                                            scrapedImageUrl!.isNotEmpty
-                                        ? ClipRRect(
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
-                                            child: Image.network(
-                                              scrapedImageUrl!,
-                                              fit: BoxFit.cover,
-                                            ),
-                                          )
-                                        : const Icon(
-                                            Icons.add_a_photo,
-                                            color: Colors.grey,
-                                          )),
-                            ),
-                          ),
-                          const SizedBox(width: 15),
-                          if (imageFile == null &&
-                              webImageBytes == null &&
-                              scrapedImageUrl == null)
-                            const Text(
-                              "Toque para adicionar foto",
-                              style: TextStyle(color: Colors.grey),
-                            )
-                          else
-                            TextButton(
-                              onPressed: () => setStateSheet(() {
-                                imageFile = null;
-                                webImageBytes = null;
-                                scrapedImageUrl = null;
-                              }),
-                              child: const Text(
-                                "Remover Foto",
-                                style: TextStyle(color: Colors.red),
+                                          : const Icon(
+                                              Icons.add_a_photo,
+                                              color: Colors.grey,
+                                            )),
                               ),
                             ),
-                        ],
-                      ),
+                            const SizedBox(width: 15),
+                            if (imageBytes == null && scrapedImageUrl == null)
+                              const Text(
+                                "Toque para adicionar foto",
+                                style: TextStyle(color: Colors.grey),
+                              )
+                            else
+                              TextButton(
+                                onPressed: () => setStateSheet(() {
+                                  // imageFile = null;
+                                  imageBytes = null;
+                                  scrapedImageUrl = null;
+                                }),
+                                child: const Text(
+                                  "Remover Foto",
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                          ],
+                        ),
 
-                      const SizedBox(height: 30),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: widget.currentTheme,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                        const SizedBox(height: 30),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: widget.currentTheme,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                             ),
-                          ),
-                          onPressed: isUploading
-                              ? null
-                              : () async {
-                                  if (nameController.text.isNotEmpty) {
-                                    setStateSheet(() => isUploading = true);
-                                    try {
-                                      final user = Supabase
-                                          .instance
-                                          .client
-                                          .auth
-                                          .currentUser;
-                                      String? finalImageUrl = scrapedImageUrl;
+                            onPressed: isUploading
+                                ? null
+                                : () async {
+                                    if (nameController.text.isNotEmpty) {
+                                      setStateSheet(() => isUploading = true);
+                                      try {
+                                        final user = Supabase
+                                            .instance
+                                            .client
+                                            .auth
+                                            .currentUser;
+                                        String? finalImageUrl = scrapedImageUrl;
 
-                                      if (imageFile != null ||
-                                          webImageBytes != null) {
-                                        final fileName =
-                                            'product_photos/${user!.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-                                        if (kIsWeb && webImageBytes != null) {
+                                        if (imageBytes != null) {
+                                          final fileName =
+                                              'product_photos/${user!.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
                                           await Supabase.instance.client.storage
                                               .from('product_photos')
                                               .uploadBinary(
                                                 fileName,
-                                                webImageBytes!,
+                                                imageBytes!,
                                                 fileOptions: const FileOptions(
                                                   contentType: 'image/jpeg',
                                                 ),
                                               );
-                                        } else if (imageFile != null) {
-                                          await Supabase.instance.client.storage
+                                          finalImageUrl = Supabase
+                                              .instance
+                                              .client
+                                              .storage
                                               .from('product_photos')
-                                              .upload(fileName, imageFile!);
+                                              .getPublicUrl(fileName);
                                         }
-                                        finalImageUrl = Supabase
-                                            .instance
-                                            .client
-                                            .storage
-                                            .from('product_photos')
-                                            .getPublicUrl(fileName);
+
+                                        double price =
+                                            double.tryParse(
+                                              priceController.text.replaceAll(
+                                                ',',
+                                                '.',
+                                              ),
+                                            ) ??
+                                            0.0;
+
+                                        if (itemToEdit != null) {
+                                          // Update existing
+                                          await Supabase.instance.client
+                                              .from('items')
+                                              .update({
+                                                'name': nameController.text,
+                                                'price': price,
+                                                'notes': noteController.text,
+                                                'link_url': linkController.text,
+                                                'image_url': finalImageUrl,
+                                                'category': selectedCategory,
+                                                'age_range':
+                                                    selectedAge ?? 'Geral',
+                                              })
+                                              .eq('id', itemToEdit['id']);
+                                        } else {
+                                          // Insert new
+                                          await Supabase.instance.client
+                                              .from('items')
+                                              .insert({
+                                                'user_id': user!.id,
+                                                'family_id': widget.familyId,
+                                                'name': nameController.text,
+                                                'price': price,
+                                                'notes': noteController.text,
+                                                'link_url': linkController.text,
+                                                'image_url': finalImageUrl,
+                                                'category': selectedCategory,
+                                                'age_range':
+                                                    selectedAge ?? 'Geral',
+                                                'is_purchased': false,
+                                              });
+                                        }
+
+                                        if (context.mounted)
+                                          Navigator.pop(context);
+                                      } catch (e) {
+                                        setStateSheet(
+                                          () => isUploading = false,
+                                        );
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text("Erro ao salvar: $e"),
+                                          ),
+                                        );
                                       }
-
-                                      double price =
-                                          double.tryParse(
-                                            priceController.text.replaceAll(
-                                              ',',
-                                              '.',
-                                            ),
-                                          ) ??
-                                          0.0;
-
-                                      await Supabase.instance.client
-                                          .from('items')
-                                          .insert({
-                                            'user_id': user!.id,
-                                            'family_id': widget.familyId,
-                                            'name': nameController.text,
-                                            'price': price,
-                                            'notes': noteController.text,
-                                            'link_url': linkController.text,
-                                            'image_url': finalImageUrl,
-                                            'category': selectedCategory,
-                                            'age_range': selectedAge ?? 'Geral',
-                                            'is_purchased': false,
-                                          });
-
-                                      if (context.mounted)
-                                        Navigator.pop(context);
-                                    } catch (e) {
-                                      setStateSheet(() => isUploading = false);
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text("Erro ao salvar: $e"),
-                                        ),
-                                      );
                                     }
-                                  }
-                                },
-                          child: isUploading
-                              ? const CircularProgressIndicator(
-                                  color: Colors.white,
-                                )
-                              : const Text(
-                                  "Salvar Item",
-                                  style: TextStyle(fontSize: 18),
-                                ),
+                                  },
+                            child: isUploading
+                                ? const CircularProgressIndicator(
+                                    color: Colors.white,
+                                  )
+                                : Text(
+                                    itemToEdit != null
+                                        ? "Atualizar Item"
+                                        : "Salvar Item",
+                                    style: const TextStyle(fontSize: 18),
+                                  ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 30),
-                    ],
+                        const SizedBox(height: 30),
+                      ],
+                    ),
                   ),
-                );
-              },
+                ],
+              ),
             );
           },
         );
@@ -953,7 +1021,12 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     double progress,
     String tip,
   ) {
-    return InkWell(
+    // Premium Color Palette integration
+    final Color baseColor = config['color'];
+    final bool isCompleted = progress >= 1.0;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
@@ -962,115 +1035,139 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
             ageFilter: _selectedAgeFilter,
             themeColor: widget.currentTheme,
             familyId: widget.familyId,
+            onEditItem: (ctx, cat, {itemToEdit}) =>
+                _showAddItemSheet(ctx, cat, itemToEdit: itemToEdit),
           ),
         ),
       ),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.05),
-              blurRadius: 5,
-              offset: const Offset(0, 3),
+              color: baseColor.withOpacity(0.08),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
             ),
           ],
+          border: Border.all(
+            color: isCompleted
+                ? baseColor.withOpacity(0.3)
+                : Colors.transparent,
+            width: 1.5,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: config['color'].withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        config['icon'],
-                        color: config['color'],
-                        size: 20,
-                      ),
-                    ),
-                    Text(
-                      "${(progress * 100).toInt()}%",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: config['color'],
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
+                // Icon Container
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: baseColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(config['icon'], color: baseColor, size: 26),
                 ),
-                const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () => _showTipDialog(context, config['name'], tip),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 4,
-                      horizontal: 8,
+                // Percentage Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isCompleted ? baseColor : Colors.grey[50],
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isCompleted
+                          ? Colors.transparent
+                          : Colors.grey.shade200,
                     ),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.lightbulb,
-                          size: 12,
-                          color: Colors.amber,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            tip,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.grey[700],
-                              height: 1.1,
-                            ),
-                          ),
-                        ),
-                      ],
+                  ),
+                  child: Text(
+                    "${(progress * 100).toInt()}%",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: isCompleted ? Colors.white : Colors.grey[700],
+                      fontSize: 12,
                     ),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   config['name'],
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 17,
+                    color: Colors.blueGrey[900],
+                    letterSpacing: -0.5,
                   ),
                 ),
-                Text(
-                  "$bought / $total itens",
-                  style: TextStyle(color: Colors.grey[400], fontSize: 11),
-                ),
                 const SizedBox(height: 6),
-                LinearProgressIndicator(
-                  value: progress,
-                  backgroundColor: config['color'].withOpacity(0.1),
-                  color: config['color'],
-                  minHeight: 4,
-                  borderRadius: BorderRadius.circular(2),
+                Row(
+                  children: [
+                    Text(
+                      "$bought",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: baseColor,
+                      ),
+                    ),
+                    Text(
+                      " / $total itens",
+                      style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                // Premium Progress Bar
+                Stack(
+                  children: [
+                    Container(
+                      height: 6,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                    FractionallySizedBox(
+                      widthFactor: progress.clamp(0.0, 1.0),
+                      child: Container(
+                        height: 6,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [baseColor.withOpacity(0.7), baseColor],
+                          ),
+                          borderRadius: BorderRadius.circular(3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: baseColor.withOpacity(0.4),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1079,63 +1176,108 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
       ),
     );
   }
-
-  void _showTipDialog(BuildContext context, String title, String tip) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.lightbulb, color: Colors.amber),
-            const SizedBox(width: 10),
-            Text(title),
-          ],
-        ),
-        content: Text(tip),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Entendi"),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
-class CategoryDetailScreen extends StatelessWidget {
+class CategoryDetailScreen extends StatefulWidget {
   final String category;
   final String ageFilter;
   final Color themeColor;
   final String? familyId;
+  final Function(BuildContext, String, {Map<String, dynamic>? itemToEdit})
+  onEditItem;
+
   const CategoryDetailScreen({
     super.key,
     required this.category,
     required this.ageFilter,
     required this.themeColor,
+    required this.onEditItem,
     this.familyId,
   });
 
-  // CORREÇÃO CHECKBOX DENTRO DA CATEGORIA
+  @override
+  State<CategoryDetailScreen> createState() => _CategoryDetailScreenState();
+}
+
+class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
+  late Stream<List<Map<String, dynamic>>> _itemsStream;
+
+  @override
+  void initState() {
+    super.initState();
+    final client = Supabase.instance.client;
+    var query = client.from('items').stream(primaryKey: ['id']);
+
+    if (widget.familyId != null) {
+      _itemsStream = query.eq('family_id', widget.familyId!);
+    } else {
+      final user = client.auth.currentUser;
+      if (user != null) {
+        _itemsStream = query.eq('user_id', user.id);
+      } else {
+        _itemsStream = const Stream.empty();
+      }
+    }
+
+    // Optimize Stream: Sort and filter inside the stream definition if possible,
+    // or wrap it here to avoid re-creating transform on every build.
+    _itemsStream = _itemsStream.map((items) {
+      items.sort(
+        (a, b) => (b['created_at'] ?? '').compareTo(a['created_at'] ?? ''),
+      );
+      return items;
+    });
+  }
+
   Future<void> _toggleItem(String itemId, bool val) async {
-    await Supabase.instance.client
-        .from('items')
-        .update({'is_purchased': !val})
-        .eq('id', itemId);
+    try {
+      await Supabase.instance.client
+          .from('items')
+          .update({'is_purchased': !val})
+          .eq('id', itemId);
+    } catch (e) {
+      debugPrint('Error toggling item: $e');
+    }
+  }
+
+  Future<void> _toggleGiftStatus(String itemId, bool currentStatus) async {
+    try {
+      await Supabase.instance.client
+          .from('items')
+          .update({'is_gift': !currentStatus})
+          .eq('id', itemId);
+
+      if (mounted && !currentStatus) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Item adicionado à lista pública de presentes! 🎁'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error toggling gift status: $e');
+    }
   }
 
   Future<void> _deleteItem(BuildContext context, String itemId) async {
-    await Supabase.instance.client.from('items').delete().eq('id', itemId);
-    if (context.mounted) Navigator.pop(context);
+    try {
+      await Supabase.instance.client.from('items').delete().eq('id', itemId);
+      if (context.mounted) Navigator.pop(context);
+    } catch (e) {
+      debugPrint('Error deleting item: $e');
+    }
   }
 
   Future<void> _launchURL(BuildContext context, String? url) async {
     if (url != null && await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Link inválido")));
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Link inválido")));
+      }
     }
   }
 
@@ -1143,148 +1285,174 @@ class CategoryDetailScreen extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          minChildSize: 0.5,
-          maxChildSize: 0.95,
-          expand: false,
-          builder: (_, controller) {
-            return SingleChildScrollView(
-              controller: controller,
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 50,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+          ),
+          height: MediaQuery.of(context).size.height * 0.7,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 50,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  const SizedBox(height: 20),
-                  if (item['image_url'] != null &&
-                      item['image_url'].toString().isNotEmpty)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(15),
-                      child: Image.network(
-                        item['image_url'],
-                        height: 250,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          height: 150,
-                          color: Colors.grey[200],
-                          child: const Icon(Icons.broken_image),
-                        ),
-                      ),
-                    )
-                  else
-                    Center(
-                      child: Icon(
-                        Icons.shopping_bag_outlined,
-                        size: 80,
-                        color: Colors.grey[200],
-                      ),
-                    ),
-                  const SizedBox(height: 20),
-                  Text(
-                    item['name'],
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
+                ),
+              ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
+                      if (item['image_url'] != null &&
+                          item['image_url'].toString().isNotEmpty)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(15),
+                          child: Image.network(
+                            item['image_url'],
+                            height: 250,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            cacheWidth: 600, // Optimize memory
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(
+                                  height: 150,
+                                  color: Colors.grey[200],
+                                  child: const Icon(Icons.broken_image),
+                                ),
+                          ),
+                        )
+                      else
+                        Center(
+                          child: Icon(
+                            Icons.shopping_bag_outlined,
+                            size: 80,
+                            color: Colors.grey[200],
+                          ),
                         ),
-                        decoration: BoxDecoration(
-                          color: themeColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                      const SizedBox(height: 20),
+                      Text(
+                        item['name'],
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
                         ),
-                        child: Text(
-                          item['age_range'] ?? 'Geral',
-                          style: TextStyle(
-                            color: themeColor,
-                            fontWeight: FontWeight.bold,
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: widget.themeColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              item['age_range'] ?? 'Geral',
+                              style: TextStyle(
+                                color: widget.themeColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            item['price'] != null
+                                ? "R\$ ${item['price']}"
+                                : "R\$ --",
+                            style: const TextStyle(
+                              fontSize: 22,
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 30),
+                      const Text(
+                        "Observações:",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        (item['notes'] != null &&
+                                item['notes'].toString().isNotEmpty)
+                            ? item['notes']
+                            : "Nenhuma anotação.",
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      const SizedBox(height: 30),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton.icon(
+                          onPressed:
+                              (item['link_url'] != null &&
+                                  item['link_url'].toString().isNotEmpty)
+                              ? () => _launchURL(context, item['link_url'])
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: widget.themeColor,
+                            foregroundColor: Colors.white,
+                          ),
+                          icon: const Icon(Icons.link),
+                          label: const Text("Ir para a Loja"),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Center(
+                        child: TextButton.icon(
+                          onPressed: () => _deleteItem(context, item['id']),
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.red,
+                          ),
+                          label: const Text(
+                            "Excluir Item",
+                            style: TextStyle(color: Colors.red),
                           ),
                         ),
                       ),
-                      const Spacer(),
-                      Text(
-                        item['price'] != null
-                            ? "R\$ ${item['price']}"
-                            : "R\$ --",
-                        style: const TextStyle(
-                          fontSize: 22,
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
+                      const SizedBox(height: 10),
+                      // BOTÃO EDITAR
+                      Center(
+                        child: TextButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context); // Close details
+                            widget.onEditItem(
+                              context,
+                              widget.category,
+                              itemToEdit: item,
+                            );
+                          },
+                          icon: Icon(Icons.edit, color: widget.themeColor),
+                          label: Text(
+                            "Editar Item",
+                            style: TextStyle(color: widget.themeColor),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const Divider(height: 30),
-                  const Text(
-                    "Observações:",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    (item['notes'] != null &&
-                            item['notes'].toString().isNotEmpty)
-                        ? item['notes']
-                        : "Nenhuma anotação.",
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 30),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      onPressed:
-                          (item['link_url'] != null &&
-                              item['link_url'].toString().isNotEmpty)
-                          ? () => _launchURL(context, item['link_url'])
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: themeColor,
-                        foregroundColor: Colors.white,
-                      ),
-                      icon: const Icon(Icons.link),
-                      label: const Text("Ir para a Loja"),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Center(
-                    child: TextButton.icon(
-                      onPressed: () => _deleteItem(context, item['id']),
-                      icon: const Icon(Icons.delete_outline, color: Colors.red),
-                      label: const Text(
-                        "Excluir Item",
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            );
-          },
+            ],
+          ),
         );
       },
     );
@@ -1292,37 +1460,33 @@ class CategoryDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final streamQuery = Supabase.instance.client
-        .from('items')
-        .stream(primaryKey: ['id']);
-    final filteredStream = familyId != null
-        ? streamQuery.eq('family_id', familyId!)
-        : streamQuery.eq(
-            'user_id',
-            Supabase.instance.client.auth.currentUser!.id,
-          );
-
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text("$category ${ageFilter != 'Todos' ? '($ageFilter)' : ''}"),
-        backgroundColor: themeColor,
+        title: Text(
+          "${widget.category} ${widget.ageFilter != 'Todos' ? '(${widget.ageFilter})' : ''}",
+        ),
+        backgroundColor: widget.themeColor,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: filteredStream.order('created_at').map((items) {
-          var filtered = items.where((i) => i['category'] == category);
-          if (ageFilter != 'Todos') {
-            filtered = filtered.where((i) => i['age_range'] == ageFilter);
+        stream: _itemsStream.map((items) {
+          var filtered = items.where((i) => i['category'] == widget.category);
+          if (widget.ageFilter != 'Todos') {
+            filtered = filtered.where(
+              (i) => i['age_range'] == widget.ageFilter,
+            );
           }
           return filtered.toList();
         }),
+
         builder: (context, snapshot) {
-          if (!snapshot.hasData)
+          if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
+          }
           final items = snapshot.data!;
-          if (items.isEmpty)
+          if (items.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1336,6 +1500,7 @@ class CategoryDetailScreen extends StatelessWidget {
                 ],
               ),
             );
+          }
           final total = items.length;
           final bought = items.where((i) => i['is_purchased'] == true).length;
           final progress = total == 0 ? 0.0 : bought / total;
@@ -1362,7 +1527,7 @@ class CategoryDetailScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          "Progresso em $category",
+                          "Progresso em ${widget.category}",
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontWeight: FontWeight.bold,
@@ -1371,7 +1536,7 @@ class CategoryDetailScreen extends StatelessWidget {
                         Text(
                           "${(progress * 100).toInt()}%",
                           style: TextStyle(
-                            color: themeColor,
+                            color: widget.themeColor,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -1380,9 +1545,9 @@ class CategoryDetailScreen extends StatelessWidget {
                     const SizedBox(height: 10),
                     LinearPercentIndicator(
                       lineHeight: 12.0,
-                      percent: progress,
-                      backgroundColor: themeColor.withOpacity(0.1),
-                      progressColor: themeColor,
+                      percent: progress.clamp(0.0, 1.0),
+                      backgroundColor: widget.themeColor.withOpacity(0.1),
+                      progressColor: widget.themeColor,
                       barRadius: const Radius.circular(10),
                       animation: true,
                       animateFromLastPercent: true,
@@ -1397,100 +1562,190 @@ class CategoryDetailScreen extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final item = items[index];
                     final isPurchased = item['is_purchased'] ?? false;
+
                     return GestureDetector(
                       onTap: () => _openItemDetails(context, item),
-                      child: Card(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        elevation: 2,
-                        color: isPurchased ? Colors.grey[100] : Colors.white,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (item['image_url'] != null)
-                              ClipRRect(
-                                borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(15),
-                                ),
-                                child: ColorFiltered(
-                                  colorFilter: isPurchased
-                                      ? const ColorFilter.mode(
-                                          Colors.grey,
-                                          BlendMode.saturation,
-                                        )
-                                      : const ColorFilter.mode(
-                                          Colors.transparent,
-                                          BlendMode.multiply,
-                                        ),
-                                  child: Image.network(
-                                    item['image_url'],
-                                    height: 150,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            Container(
-                                              height: 150,
-                                              color: Colors.grey[200],
-                                              child: const Center(
-                                                child: Icon(
-                                                  Icons.image_not_supported,
-                                                  color: Colors.grey,
-                                                ),
-                                              ),
-                                            ),
-                                  ),
-                                ),
-                              ),
-                            Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Row(
-                                children: [
-                                  Transform.scale(
-                                    scale: 1.3,
-                                    child: Checkbox(
-                                      value: isPurchased,
-                                      activeColor: themeColor,
-                                      shape: const CircleBorder(),
-                                      onChanged: (val) =>
-                                          _toggleItem(item['id'], isPurchased),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          item['name'],
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                            decoration: isPurchased
-                                                ? TextDecoration.lineThrough
-                                                : null,
-                                            color: isPurchased
-                                                ? Colors.grey
-                                                : Colors.black87,
-                                          ),
-                                        ),
-                                        if (item['price'] != null)
-                                          Text(
-                                            "R\$ ${item['price']}",
-                                            style: TextStyle(
-                                              color: isPurchased
-                                                  ? Colors.grey
-                                                  : Colors.green,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: isPurchased ? Colors.grey[50] : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: isPurchased
+                              ? Border.all(color: Colors.grey.shade200)
+                              : Border.all(color: Colors.transparent),
+                          boxShadow: isPurchased
+                              ? []
+                              : [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.04),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
                                   ),
                                 ],
+                        ),
+                        child: Row(
+                          children: [
+                            // 1. Imagem Principal
+                            Hero(
+                              tag: 'item_${item['id']}',
+                              child: Container(
+                                width: 70,
+                                height: 70,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  color: Colors.grey[100],
+                                  image: item['image_url'] != null
+                                      ? DecorationImage(
+                                          image: ResizeImage(
+                                            NetworkImage(item['image_url']),
+                                            width: 200,
+                                            policy: ResizeImagePolicy.fit,
+                                          ),
+                                          fit: BoxFit.cover,
+                                          colorFilter: isPurchased
+                                              ? const ColorFilter.mode(
+                                                  Colors.grey,
+                                                  BlendMode.saturation,
+                                                )
+                                              : null,
+                                        )
+                                      : null,
+                                ),
+                                child: item['image_url'] == null
+                                    ? Icon(
+                                        Icons.shopping_bag_outlined,
+                                        color: Colors.grey[400],
+                                        size: 30,
+                                      )
+                                    : null,
+                              ),
+                            ),
+                            const SizedBox(width: 15),
+
+                            // 2. Detalhes
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    item['name'],
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: isPurchased
+                                          ? Colors.grey[500]
+                                          : Colors.grey[800],
+                                      decoration: isPurchased
+                                          ? TextDecoration.lineThrough
+                                          : null,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      if (item['age_range'] != null &&
+                                          item['age_range'] != 'Todos')
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 2,
+                                          ),
+                                          margin: const EdgeInsets.only(
+                                            right: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: isPurchased
+                                                ? Colors.grey[200]
+                                                : widget.themeColor.withOpacity(
+                                                    0.1,
+                                                  ),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            item['age_range'],
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: isPurchased
+                                                  ? Colors.grey[600]
+                                                  : widget.themeColor,
+                                            ),
+                                          ),
+                                        ),
+                                      Text(
+                                        item['price'] != null
+                                            ? "R\$ ${item['price']}"
+                                            : "Preço não def.",
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: isPurchased
+                                              ? Colors.grey[400]
+                                              : (item['price'] != null
+                                                    ? Colors.green[700]
+                                                    : Colors.grey[400]),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // 3. Botão de Presente Público (Se não comprado)
+                            if (!isPurchased)
+                              IconButton(
+                                icon: Icon(
+                                  item['is_gift'] == true
+                                      ? Icons.card_giftcard
+                                      : Icons.card_giftcard_outlined,
+                                  color: item['is_gift'] == true
+                                      ? widget.themeColor
+                                      : Colors.grey[400],
+                                ),
+                                onPressed: () => _toggleGiftStatus(
+                                  item['id'],
+                                  item['is_gift'] == true,
+                                ),
+                                tooltip: item['is_gift'] == true
+                                    ? "Na lista de presentes"
+                                    : "Disponibilizar como presente",
+                              ),
+
+                            const SizedBox(width: 8),
+
+                            // 4. Checkbox Customizado
+                            GestureDetector(
+                              onTap: () => _toggleItem(item['id'], isPurchased),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: isPurchased
+                                      ? widget.themeColor.withOpacity(0.2)
+                                      : Colors.transparent,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isPurchased
+                                        ? widget.themeColor
+                                        : Colors.grey.shade300,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: isPurchased
+                                    ? Icon(
+                                        Icons.check,
+                                        size: 16,
+                                        color: widget.themeColor,
+                                      )
+                                    : null,
                               ),
                             ),
                           ],

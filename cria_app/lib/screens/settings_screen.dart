@@ -1,11 +1,7 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Para copiar e colar
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter/foundation.dart'; // Para kIsWeb
-import 'package:intl/intl.dart';
-import 'package:flutter/painting.dart'; // <-- add
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SettingsScreen extends StatefulWidget {
   final Color themeColor;
@@ -82,18 +78,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             .select()
             .eq('id', _familyId!)
             .single();
-
-        // 3. Carrega o Parceiro
-        final partners = await client
-            .from('profiles')
-            .select()
-            .eq('family_id', _familyId!)
-            .neq('id', user.id)
-            .limit(1);
-
-        if (partners.isNotEmpty) {
-          _partnerProfile = partners.first;
-        }
       }
 
       if (mounted) {
@@ -122,6 +106,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           _isLoading = false;
         });
+
+        // 3. Carregar Parceiro (agora mais robusto)
+        if (_familyId != null) {
+          try {
+            final List<dynamic> response = await client
+                .from('profiles')
+                .select()
+                .eq('family_id', _familyId!)
+                .neq('id', user.id)
+                .limit(1); // Pega apenas um, se houver
+
+            if (mounted && response.isNotEmpty) {
+              setState(() {
+                _partnerProfile = response.first as Map<String, dynamic>;
+              });
+            }
+          } catch (e) {
+            print("Erro ao carregar parceiro: $e");
+          }
+        }
       }
     } catch (e) {
       print('Erro ao carregar dados: $e');
@@ -299,462 +303,655 @@ class _SettingsScreenState extends State<SettingsScreen> {
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.only(left: 8, bottom: 8),
-              child: Text(
-                "MEU PERFIL",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                ),
-              ),
-            ),
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Column(
-                          children: [
-                            Stack(
-                              children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: widget.themeColor,
-                                      width: 3,
-                                    ),
-                                  ),
-                                  child: CircleAvatar(
-                                    radius: 40,
-                                    backgroundColor: Colors.grey[200],
-                                    backgroundImage: _photoUrl != null
-                                        ? NetworkImage(_photoUrl!)
-                                        : null,
-                                    child: _photoUrl == null
-                                        ? Icon(
-                                            Icons.person,
-                                            size: 40,
-                                            color: Colors.grey[400],
-                                          )
-                                        : null,
-                                  ),
-                                ),
-                                Positioned(
-                                  bottom: 0,
-                                  right: 0,
-                                  child: GestureDetector(
-                                    onTap: _isUploading
-                                        ? null
-                                        : _pickAndUploadImage,
-                                    child: CircleAvatar(
-                                      radius: 14,
-                                      backgroundColor: widget.themeColor,
-                                      child: _isUploading
-                                          ? const Padding(
-                                              padding: EdgeInsets.all(4),
-                                              child: CircularProgressIndicator(
-                                                color: Colors.white,
-                                                strokeWidth: 2,
-                                              ),
-                                            )
-                                          : const Icon(
-                                              Icons.camera_alt,
-                                              size: 16,
-                                              color: Colors.white,
-                                            ),
-                                    ),
-                                  ),
+            // PROFILE HEADER
+            Center(
+              child: Column(
+                children: [
+                  Stack(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: widget.themeColor.withValues(alpha: 0.5),
+                            width: 2,
+                          ),
+                        ),
+                        child: CircleAvatar(
+                          radius: 50,
+                          backgroundColor: Colors.grey[200],
+                          backgroundImage: _photoUrl != null
+                              ? NetworkImage(_photoUrl!)
+                              : null,
+                          child: _photoUrl == null
+                              ? Icon(
+                                  Icons.person,
+                                  size: 50,
+                                  color: Colors.grey[400],
+                                )
+                              : null,
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: GestureDetector(
+                          onTap: _isUploading ? null : _pickAndUploadImage,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: widget.themeColor,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  blurRadius: 5,
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _role == 'mae'
-                                  ? 'Mamãe'
-                                  : (_role == 'pai' ? 'Papai' : 'Usuário'),
-                              style: TextStyle(
-                                color: widget.themeColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
+                            child: _isUploading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.camera_alt,
+                                    size: 20,
+                                    color: Colors.white,
+                                  ),
+                          ),
                         ),
-                        const SizedBox(width: 20),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+                  Text(
+                    _nameController.text.isNotEmpty
+                        ? _nameController.text
+                        : "Olá, Mamãe",
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  Text(
+                    _role == 'mae'
+                        ? 'Mamãe'
+                        : (_role == 'pai' ? 'Papai' : 'Usuário'),
+                    style: TextStyle(
+                      color: widget.themeColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 30),
+
+            // PERSONAL INFO SECTION
+            _buildSectionHeader("Meus Dados"),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  _buildModernField(
+                    "Apelido",
+                    _nicknameController,
+                    _isEditingProfile,
+                    Icons.face,
+                  ),
+                  const Divider(height: 30, color: Colors.black12),
+                  _buildModernField(
+                    "Endereço",
+                    _addressController,
+                    _isEditingProfile,
+                    Icons.location_on_outlined,
+                  ),
+                  const Divider(height: 30, color: Colors.black12),
+                  _buildModernField(
+                    "Tipo Sanguíneo",
+                    _bloodTypeController,
+                    _isEditingProfile,
+                    Icons.bloodtype,
+                  ),
+                  if (_role == 'mae') ...[
+                    const Divider(height: 30, color: Colors.black12),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: widget.themeColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            Icons.calendar_month,
+                            color: widget.themeColor,
+                          ),
+                        ),
+                        const SizedBox(width: 15),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildEditableField(
-                                "Apelido",
-                                _nicknameController,
-                                _isEditingProfile,
-                                Icons.face,
-                              ),
-                              const SizedBox(height: 10),
-                              _buildEditableField(
-                                "Endereço",
-                                _addressController,
-                                _isEditingProfile,
-                                Icons.location_on_outlined,
-                              ),
-                              const SizedBox(height: 10),
-                              _buildEditableField(
-                                "Tipo Sanguíneo",
-                                _bloodTypeController,
-                                _isEditingProfile,
-                                Icons.bloodtype,
-                              ),
-
-                              // --- SEÇÃO GESTAÇÃO (SÓ PARA MÃE) ---
-                              if (_role == 'mae') ...[
-                                const SizedBox(height: 15),
-                                const Divider(),
-                                Builder(
-                                  builder: (context) {
-                                    final gest = calcularIdadeGestacional(
-                                      _dumDate,
-                                    );
-                                    return Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          _dumDate == null
-                                              ? "DUM não definida"
-                                              : "${gest['semanas']} semanas e ${gest['dias']} dias",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: widget.themeColor,
-                                          ),
-                                        ),
-                                        TextButton.icon(
-                                          onPressed: () =>
-                                              _selectDumDate(context),
-                                          icon: const Icon(
-                                            Icons.calendar_month,
-                                            size: 16,
-                                          ),
-                                          label: Text(
-                                            _dumDate == null
-                                                ? "Definir DUM"
-                                                : "Alterar DUM",
-                                          ),
-                                          style: TextButton.styleFrom(
-                                            padding: EdgeInsets.zero,
-                                            minimumSize: Size.zero,
-                                            tapTargetSize: MaterialTapTargetSize
-                                                .shrinkWrap,
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  },
+                              Text(
+                                "Idade Gestacional",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[500],
                                 ),
-                              ],
+                              ),
+                              Builder(
+                                builder: (context) {
+                                  final gest = calcularIdadeGestacional(
+                                    _dumDate,
+                                  );
+                                  return Text(
+                                    _dumDate == null
+                                        ? "Definir DUM"
+                                        : "${gest['semanas']} sem + ${gest['dias']} dias",
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  );
+                                },
+                              ),
                             ],
                           ),
                         ),
+                        TextButton(
+                          onPressed: () => _selectDumDate(context),
+                          child: const Text("Alterar"),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _isEditingProfile
-                            ? _saveUserProfile()
-                            : setState(() => _isEditingProfile = true),
-                        icon: Icon(_isEditingProfile ? Icons.save : Icons.edit),
-                        label: Text(
-                          _isEditingProfile
-                              ? "Salvar Alterações"
-                              : "Editar Meus Dados",
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: widget.themeColor,
-                          side: BorderSide(color: widget.themeColor),
+                  ],
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => _isEditingProfile
+                          ? _saveUserProfile()
+                          : setState(() => _isEditingProfile = true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _isEditingProfile
+                            ? widget.themeColor
+                            : Colors.grey[100],
+                        foregroundColor: _isEditingProfile
+                            ? Colors.white
+                            : widget.themeColor,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
                         ),
                       ),
+                      child: Text(
+                        _isEditingProfile ? "Salvar Alterações" : "Editar",
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            // PARTNER INFO SECTION (Dados da Mamãe/Parceiro)
+            if (_partnerProfile != null) ...[
+              _buildSectionHeader(
+                _role == 'mae' ? "Meu Parceiro" : "Dados da Mamãe",
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
                     ),
                   ],
                 ),
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            if (_partnerProfile != null) ...[
-              const Padding(
-                padding: EdgeInsets.only(left: 8, bottom: 8),
-                child: Text(
-                  "DADOS DO PARCEIRO(A)",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey,
-                  ),
-                ),
-              ),
-              Card(
-                elevation: 2,
-                color: Colors.blueGrey[50],
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 25,
-                            backgroundColor: Colors.grey[300],
-                            backgroundImage:
-                                _partnerProfile!['photo_url'] != null
-                                ? NetworkImage(_partnerProfile!['photo_url'])
-                                : null,
-                            child: _partnerProfile!['photo_url'] == null
-                                ? const Icon(Icons.person, color: Colors.white)
-                                : null,
-                          ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _partnerProfile!['nickname'] ?? 'Sem apelido',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                Text(
-                                  _partnerProfile!['role'] == 'mae'
-                                      ? 'Mamãe'
-                                      : 'Papai',
-                                  style: const TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Divider(height: 20),
-                      _buildPartnerInfoRow(
-                        Icons.badge,
-                        "Nome Completo",
-                        _partnerProfile!['full_name'],
-                      ),
-                      _buildPartnerInfoRow(
-                        Icons.location_on,
-                        "Endereço",
-                        _partnerProfile!['address'],
-                      ),
-                      _buildPartnerInfoRow(
-                        Icons.bloodtype,
-                        "Tipo Sanguíneo",
-                        _partnerProfile!['blood_type'],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 25),
-            ],
-
-            const Padding(
-              padding: EdgeInsets.only(left: 8, bottom: 8),
-              child: Text(
-                "CONFIGURAÇÕES DO APP",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                ),
-              ),
-            ),
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    TextField(
-                      controller: _babyNameController,
-                      decoration: const InputDecoration(
-                        labelText: "Nome do Bebê",
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.child_care),
+                    // PARTNER PHOTO
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: widget.themeColor.withOpacity(0.3),
+                            width: 2,
+                          ),
+                        ),
+                        child: CircleAvatar(
+                          radius: 35,
+                          backgroundColor: Colors.grey[200],
+                          backgroundImage:
+                              (_partnerProfile!['photo_url'] != null &&
+                                  _partnerProfile!['photo_url']
+                                      .toString()
+                                      .isNotEmpty)
+                              ? NetworkImage(_partnerProfile!['photo_url'])
+                              : null,
+                          child:
+                              (_partnerProfile!['photo_url'] == null ||
+                                  _partnerProfile!['photo_url']
+                                      .toString()
+                                      .isEmpty)
+                              ? Icon(
+                                  Icons.person,
+                                  size: 35,
+                                  color: Colors.grey[400],
+                                )
+                              : null,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 15),
-                    DropdownButtonFormField<String>(
-                      value: _babyGender,
-                      decoration: const InputDecoration(
-                        labelText: "Sexo do Bebê",
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.palette),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'menino',
-                          child: Text("Menino (Azul)"),
-                        ),
-                        DropdownMenuItem(
-                          value: 'menina',
-                          child: Text("Menina (Rosa)"),
-                        ),
-                        DropdownMenuItem(
-                          value: 'neutro',
-                          child: Text("Surpresa (Roxo)"),
-                        ),
-                      ],
-                      onChanged: (v) => setState(() => _babyGender = v!),
+
+                    _buildPartnerInfoRow(
+                      Icons.person,
+                      "Nome Completo",
+                      _partnerProfile!['full_name'],
                     ),
-                    const SizedBox(height: 15),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _saveBabyData,
-                        icon: const Icon(Icons.check_circle),
-                        label: const Text("Aplicar Tema e Nome"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: widget.themeColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
+                    const Divider(height: 15, color: Colors.black12),
+
+                    if (_partnerProfile!['nickname'] != null &&
+                        _partnerProfile!['nickname'].toString().isNotEmpty) ...[
+                      _buildPartnerInfoRow(
+                        Icons.face,
+                        "Apelido",
+                        _partnerProfile!['nickname'],
                       ),
+                      const Divider(height: 15, color: Colors.black12),
+                    ],
+
+                    _buildPartnerInfoRow(
+                      Icons.phone,
+                      "Telefone",
+                      _partnerProfile!['phone'],
                     ),
+                    const Divider(height: 15, color: Colors.black12),
+
+                    _buildPartnerInfoRow(
+                      Icons.location_on,
+                      "Endereço",
+                      _partnerProfile!['address'],
+                    ),
+                    const Divider(height: 15, color: Colors.black12),
+
+                    _buildPartnerInfoRow(
+                      Icons.bloodtype,
+                      "Tipo Sanguíneo",
+                      _partnerProfile!['blood_type'],
+                    ),
+
+                    if (_role != 'mae' &&
+                        _partnerProfile!['dum_date'] != null) ...[
+                      const Divider(height: 15, color: Colors.black12),
+                      Builder(
+                        builder: (context) {
+                          final dum = DateTime.parse(
+                            _partnerProfile!['dum_date'],
+                          );
+                          final gest = calcularIdadeGestacional(dum);
+                          return _buildPartnerInfoRow(
+                            Icons.calendar_month,
+                            "Gestação (Mamãe)",
+                            "${gest['semanas']} semanas + ${gest['dias']} dias",
+                          );
+                        },
+                      ),
+                    ],
                   ],
                 ),
               ),
-            ),
+              const SizedBox(height: 30),
+            ],
 
-            // --- CÓDIGO DE CONVITE ---
-            FutureBuilder(
-              future: Supabase.instance.client
-                  .from('profiles')
-                  .select('family_id, families(invite_code)')
-                  .eq('id', Supabase.instance.client.auth.currentUser!.id)
-                  .single(),
-              builder: (context, AsyncSnapshot snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting)
-                  return const SizedBox.shrink();
-                if (snapshot.hasError ||
-                    snapshot.data == null ||
-                    snapshot.data['families'] == null)
-                  return const SizedBox.shrink();
+            const SizedBox(height: 10),
 
-                final String inviteCode = snapshot
-                    .data['families']['invite_code']
-                    .toString();
-
-                return ListTile(
-                  leading: const Icon(Icons.share, color: Colors.purple),
-                  title: const Text("Código de Convite"),
-                  subtitle: Text(
-                    inviteCode,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+            // BABY CONFIG SECTION
+            _buildSectionHeader("Configurações do Bebê"),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
                   ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.copy),
-                    onPressed: () =>
-                        _copyToClipboard("Código de convite", inviteCode),
+                ],
+              ),
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _babyNameController,
+                    decoration: InputDecoration(
+                      labelText: "Nome do Bebê",
+                      prefixIcon: const Icon(Icons.child_care),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide(color: Colors.grey[200]!),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide(color: Colors.grey[200]!),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[50],
+                    ),
                   ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 40),
-
-            Center(
-              child: TextButton.icon(
-                onPressed: () async {
-                  await Supabase.instance.client.auth.signOut();
-                  if (mounted)
-                    Navigator.of(context).popUntil((route) => route.isFirst);
-                },
-                icon: const Icon(Icons.logout, color: Colors.red),
-                label: const Text(
-                  "Sair da Conta",
-                  style: TextStyle(color: Colors.red, fontSize: 16),
-                ),
+                  const SizedBox(height: 15),
+                  if (_familyId != null) ...[
+                    Container(
+                      decoration: BoxDecoration(
+                        color: widget.themeColor.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(
+                          color: widget.themeColor.withOpacity(0.3),
+                        ),
+                      ),
+                      child: ListTile(
+                        leading: Icon(Icons.link, color: widget.themeColor),
+                        title: const Text(
+                          "Meu Link de Presentes Público",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        subtitle: Text(
+                          "app-cria.vercel.app/presentes/$_familyId",
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[700],
+                            decoration: TextDecoration.underline,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.copy),
+                          color: widget.themeColor,
+                          onPressed: () {
+                            Clipboard.setData(
+                              ClipboardData(
+                                text:
+                                    'https://app-cria.vercel.app/presentes/$_familyId',
+                              ),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Link copiado para a área de transferência!',
+                                ),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                  ],
+                  DropdownButtonFormField<String>(
+                    value: _babyGender,
+                    decoration: InputDecoration(
+                      labelText: "Sexo do Bebê",
+                      prefixIcon: const Icon(Icons.palette),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide(color: Colors.grey[200]!),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide(color: Colors.grey[200]!),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[50],
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'menino',
+                        child: Text("Menino (Azul)"),
+                      ),
+                      DropdownMenuItem(
+                        value: 'menina',
+                        child: Text("Menina (Rosa)"),
+                      ),
+                      DropdownMenuItem(
+                        value: 'neutro',
+                        child: Text("Surpresa (Roxo)"),
+                      ),
+                    ],
+                    onChanged: (v) => setState(() => _babyGender = v!),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _saveBabyData,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: widget.themeColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      ),
+                      child: const Text("Aplicar Tema"),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
+
+            const SizedBox(height: 30),
+
+            // INVITE CODE & LOGOUT
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                // WRAP LIST TILES
+                children: [
+                  FutureBuilder(
+                    future: Supabase.instance.client
+                        .from('profiles')
+                        .select('family_id, families(invite_code)')
+                        .eq('id', Supabase.instance.client.auth.currentUser!.id)
+                        .single(),
+                    builder: (context, AsyncSnapshot snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting)
+                        return const SizedBox.shrink();
+                      if (snapshot.hasError ||
+                          snapshot.data == null ||
+                          snapshot.data['families'] == null)
+                        return const SizedBox.shrink();
+
+                      final String inviteCode = snapshot
+                          .data['families']['invite_code']
+                          .toString();
+
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 5,
+                        ),
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.share, color: Colors.purple),
+                        ),
+                        title: const Text("Código de Convite"),
+                        subtitle: Text(
+                          inviteCode,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.copy),
+                          onPressed: () =>
+                              _copyToClipboard("Código de convite", inviteCode),
+                        ),
+                      );
+                    },
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 5,
+                    ),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.logout, color: Colors.red),
+                    ),
+                    title: const Text(
+                      "Sair da Conta",
+                      style: TextStyle(color: Colors.red),
+                    ),
+                    onTap: () async {
+                      await Supabase.instance.client.auth.signOut();
+                      if (mounted)
+                        Navigator.of(
+                          context,
+                        ).popUntil((route) => route.isFirst);
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 120),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildEditableField(
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 15, bottom: 12),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 18,
+          color: Colors.grey[700],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernField(
     String label,
     TextEditingController controller,
     bool isEditing,
     IconData icon,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Row(
-          children: [
-            Icon(icon, size: 14, color: Colors.grey),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-          ],
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: Colors.blueGrey, size: 20),
         ),
-        isEditing
-            ? SizedBox(
-                height: 40,
-                child: TextField(
-                  controller: controller,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(vertical: 8),
-                  ),
-                ),
-              )
-            : Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Text(
-                  controller.text.isNotEmpty ? controller.text : '-',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
+        const SizedBox(width: 15),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[500],
+                  fontWeight: FontWeight.w500,
                 ),
               ),
+              isEditing
+                  ? SizedBox(
+                      height: 35,
+                      child: TextField(
+                        controller: controller,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(vertical: 8),
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    )
+                  : Text(
+                      controller.text.isNotEmpty ? controller.text : '-',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+            ],
+          ),
+        ),
       ],
     );
   }
 
+  // RE-ADDED: Helper for partner info
   Widget _buildPartnerInfoRow(IconData icon, String label, String? value) {
     if (value == null || value.isEmpty) return const SizedBox.shrink();
     return Padding(

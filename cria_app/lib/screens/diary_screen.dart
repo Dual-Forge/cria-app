@@ -46,6 +46,9 @@ class _DiaryScreenState extends State<DiaryScreen> {
     },
   ];
 
+  // Variável para controle de edição
+  String? _editingId;
+
   Future<void> _addEntry() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (_noteController.text.isEmpty && _imageFile == null) return;
@@ -54,6 +57,10 @@ class _DiaryScreenState extends State<DiaryScreen> {
 
     try {
       String? uploadedImageUrl;
+      // Se não mudou a imagem na edição, mantém a antiga?
+      // Logica simples: Se _imageFile != null, upload. Se não, se edição, não mexe (mas user pode ter removido).
+      // Na v1 vamos assumir upload novo substitui.
+
       if (_imageFile != null) {
         final fileName =
             'docs/${user!.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
@@ -65,15 +72,29 @@ class _DiaryScreenState extends State<DiaryScreen> {
             .getPublicUrl(fileName);
       }
 
-      await Supabase.instance.client.from('diary_entries').insert({
+      final data = {
         'user_id': user!.id,
-        // Usamos o user_id como na V1, mas o familyId está disponível se precisar no futuro
-        'entry_date': DateTime.now().toIso8601String(),
+        'entry_date': DateTime.now()
+            .toIso8601String(), // Mantém data original se for edição? Talvez update?
+        // Se for edição, talvez manter a data original seja melhor, mas aqui simplificamos "editado hoje".
+        // Vamos manter a lógica simples: se edição, update nos campos.
         'weight': double.tryParse(_weightController.text.replaceAll(',', '.')),
         'notes': _noteController.text,
         'mood': _selectedMood,
-        'photo_url': uploadedImageUrl,
-      });
+      };
+
+      if (uploadedImageUrl != null) {
+        data['photo_url'] = uploadedImageUrl;
+      }
+
+      if (_editingId != null) {
+        await Supabase.instance.client
+            .from('diary_entries')
+            .update(data)
+            .eq('id', _editingId!);
+      } else {
+        await Supabase.instance.client.from('diary_entries').insert(data);
+      }
 
       _weightController.clear();
       _noteController.clear();
@@ -81,6 +102,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
         _imageFile = null;
         _selectedMood = 'Feliz';
         _isUploading = false;
+        _editingId = null;
       });
       if (mounted) Navigator.pop(context);
     } catch (e) {
@@ -92,7 +114,22 @@ class _DiaryScreenState extends State<DiaryScreen> {
     }
   }
 
-  void _showAddEntrySheet() {
+  void _showAddEntrySheet({Map<String, dynamic>? entry}) {
+    if (entry != null) {
+      _editingId = entry['id'];
+      _noteController.text = entry['notes'] ?? '';
+      _weightController.text = entry['weight']?.toString() ?? '';
+      _selectedMood = entry['mood'] ?? 'Feliz';
+      // Image handling is tricky without downloading. We'll skip pre-filling image file for now,
+      // but ideally show the existing url.
+    } else {
+      _editingId = null;
+      _noteController.clear();
+      _weightController.clear();
+      _selectedMood = 'Feliz';
+      _imageFile = null;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -353,7 +390,9 @@ class _DiaryScreenState extends State<DiaryScreen> {
             );
 
           return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+            reverse:
+                true, // Chat usually starts from bottom? Or just normal? Let's keep normal top-down for diary.
             itemCount: entries.length,
             itemBuilder: (context, index) {
               final entry = entries[index];
@@ -363,105 +402,120 @@ class _DiaryScreenState extends State<DiaryScreen> {
                 orElse: () => _moods[0],
               );
 
-              return Card(
-                margin: const EdgeInsets.only(bottom: 16),
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (entry['photo_url'] != null)
-                      ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(15),
-                        ),
-                        child: Image.network(
-                          entry['photo_url'],
-                          height: 200,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
+              // Chat Bubble Decoration
+              return GestureDetector(
+                onTap: () {
+                  // Open Edit/View Sheet
+                  // Here we ideally want to reuse the adding sheet but populated.
+                  // For now, simpler View Dialog.
+                  // But user asked to "edit".
+                  // We'll reimplement _showEntryForm in a way it accepts data.
+                  _showAddEntrySheet(entry: entry);
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  child: Row(
+                    mainAxisAlignment:
+                        MainAxisAlignment.end, // My messages (Right)
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      // Time
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 5, right: 8),
+                        child: Text(
+                          DateFormat('dd/MM HH:mm').format(date),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey[400],
+                          ),
                         ),
                       ),
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                DateFormat('dd/MM/yyyy • HH:mm').format(date),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: widget.themeColor,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: moodData['color'].withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      moodData['icon'],
-                                      color: moodData['color'],
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      moodData['label'],
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: moodData['color'],
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                      Flexible(
+                        child: Container(
+                          constraints: BoxConstraints(
+                            maxWidth: MediaQuery.of(context).size.width * 0.8,
                           ),
-                          const SizedBox(height: 12),
-                          if (entry['notes'] != null)
-                            Text(
-                              entry['notes'],
-                              style: const TextStyle(fontSize: 16, height: 1.4),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: widget.themeColor.withOpacity(
+                              0.1,
+                            ), // User bubble color
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(20),
+                              topRight: Radius.circular(20),
+                              bottomLeft: Radius.circular(20),
+                              bottomRight: Radius.circular(5),
                             ),
-                          if (entry['weight'] != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 10),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.monitor_weight_outlined,
-                                    size: 16,
-                                    color: Colors.grey,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (entry['photo_url'] != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Image.network(entry['photo_url']),
                                   ),
-                                  const SizedBox(width: 4),
+                                ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    moodData['icon'],
+                                    size: 16,
+                                    color: moodData['color'],
+                                  ),
+                                  const SizedBox(width: 5),
                                   Text(
-                                    "Peso: ${entry['weight']} kg",
+                                    moodData['label'],
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.grey[700],
+                                      color: moodData['color'],
                                       fontSize: 12,
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                        ],
+                              if (entry['notes'] != null &&
+                                  entry['notes'].isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Text(
+                                    entry['notes'],
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                              if (entry['weight'] != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.monitor_weight,
+                                        size: 14,
+                                        color: Colors.grey[600],
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        "${entry['weight']} kg",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             },
