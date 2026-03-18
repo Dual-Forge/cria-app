@@ -31,10 +31,15 @@ class _BabyRegistrationScreenState extends State<BabyRegistrationScreen> {
 
       if (profile['family_id'] != null) {
         // 2. Atualiza a tabela families com o nome e sexo
-        await Supabase.instance.client.from('families').update({
-          'baby_name': _nameController.text.isEmpty ? null : _nameController.text,
-          'baby_gender': _selectedGender,
-        }).eq('id', profile['family_id']);
+        await Supabase.instance.client
+            .from('families')
+            .update({
+              'baby_name': _nameController.text.isEmpty
+                  ? null
+                  : _nameController.text,
+              'baby_gender': _selectedGender,
+            })
+            .eq('id', profile['family_id']);
 
         if (mounted) {
           // 3. NAVEGAÇÃO CORRETA (Aqui estava o erro)
@@ -46,10 +51,16 @@ class _BabyRegistrationScreenState extends State<BabyRegistrationScreen> {
         }
       } else {
         // Caso de erro raro (usuário sem família)
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Erro: Família não encontrada.")));
+        if (mounted)
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Erro: Família não encontrada.")),
+          );
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro: $e")));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Erro: $e")));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -94,15 +105,21 @@ class _BabyRegistrationScreenState extends State<BabyRegistrationScreen> {
 
             // Seleção de Sexo
             DropdownButtonFormField<String>(
-              value: _selectedGender,
+              initialValue: _selectedGender,
               decoration: const InputDecoration(
                 labelText: "Sexo do Bebê",
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.wc),
               ),
               items: const [
-                DropdownMenuItem(value: 'menino', child: Text("Menino 💙 (Tema Azul)")),
-                DropdownMenuItem(value: 'menina', child: Text("Menina 🩷 (Tema Rosa)")),
+                DropdownMenuItem(
+                  value: 'menino',
+                  child: Text("Menino 💙 (Tema Azul)"),
+                ),
+                DropdownMenuItem(
+                  value: 'menina',
+                  child: Text("Menina 🩷 (Tema Rosa)"),
+                ),
               ],
               onChanged: (v) => setState(() => _selectedGender = v),
               hint: const Text("Surpresa / Ainda não sei"),
@@ -121,21 +138,29 @@ class _BabyRegistrationScreenState extends State<BabyRegistrationScreen> {
                   foregroundColor: Colors.white,
                 ),
                 child: _isLoading
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : const Text("Salvar e Entrar"),
               ),
             ),
-            
+
             const SizedBox(height: 10),
             TextButton(
               onPressed: () {
                 // Pular essa etapa (vai para a MainScreen direto)
                 Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (context) => const MainScreen()),
-                    (route) => false);
+                  MaterialPageRoute(builder: (context) => const MainScreen()),
+                  (route) => false,
+                );
               },
               child: const Text("Decidir depois (Pular)"),
-            )
+            ),
           ],
         ),
       ),

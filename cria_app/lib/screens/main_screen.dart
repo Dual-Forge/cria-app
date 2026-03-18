@@ -57,8 +57,9 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading)
+    if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     return StreamBuilder<Map<String, dynamic>>(
       stream: _familyStream,
@@ -74,12 +75,13 @@ class _MainScreenState extends State<MainScreen> {
           babyName = data['baby_name'];
           babyGender = data['baby_gender'];
           familyCode = data['invite_code'];
-          if (data['dum_date'] != null)
+          if (data['dum_date'] != null) {
             dumDate = DateTime.parse(data['dum_date']);
+          }
 
-          if (babyGender == 'menino')
+          if (babyGender == 'menino') {
             themeColor = const Color(0xFF64B5F6);
-          else if (babyGender == 'menina')
+          } else if (babyGender == 'menina')
             themeColor = const Color(0xFFF06292);
           else
             themeColor = Colors.deepPurple.shade300;

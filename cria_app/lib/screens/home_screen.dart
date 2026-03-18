@@ -8,7 +8,6 @@ import '../utils/baby_data.dart';
 import '../services/pregnancy_ai_service.dart';
 import '../services/gemini_service.dart';
 import 'chatbot_screen.dart';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -1216,7 +1215,7 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
     DateTime selectedDate = DateTime.now();
     TimeOfDay selectedTime = TimeOfDay.now();
     bool isSaving = false;
-    Uint8List? _agendaImageBytes;
+    Uint8List? agendaImageBytes;
     // bool _isUploadingAgendaImage = false; // Removed unused
 
     showModalBottomSheet(
@@ -1234,7 +1233,7 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
             if (picked != null) {
               final bytes = await picked.readAsBytes();
               setSheetState(() {
-                _agendaImageBytes = bytes;
+                agendaImageBytes = bytes;
               });
             }
           }
@@ -1308,8 +1307,9 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                                   ),
                                   locale: const Locale('pt', 'BR'),
                                 );
-                                if (d != null)
+                                if (d != null) {
                                   setSheetState(() => selectedDate = d);
+                                }
                               },
                               child: Container(
                                 padding: const EdgeInsets.all(12),
@@ -1345,8 +1345,9 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                                   context: context,
                                   initialTime: selectedTime,
                                 );
-                                if (t != null)
+                                if (t != null) {
                                   setSheetState(() => selectedTime = t);
+                                }
                               },
                               child: Container(
                                 padding: const EdgeInsets.all(12),
@@ -1393,11 +1394,11 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                                 borderRadius: BorderRadius.circular(15),
                                 border: Border.all(color: Colors.grey.shade300),
                               ),
-                              child: (_agendaImageBytes != null)
+                              child: (agendaImageBytes != null)
                                   ? ClipRRect(
                                       borderRadius: BorderRadius.circular(15),
                                       child: Image.memory(
-                                        _agendaImageBytes!,
+                                        agendaImageBytes!,
                                         fit: BoxFit.cover,
                                       ),
                                     )
@@ -1408,10 +1409,10 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                             ),
                           ),
                           const SizedBox(width: 15),
-                          if (_agendaImageBytes != null)
+                          if (agendaImageBytes != null)
                             TextButton(
                               onPressed: () => setSheetState(() {
-                                _agendaImageBytes = null;
+                                agendaImageBytes = null;
                               }),
                               child: const Text(
                                 "Remover",
@@ -1442,7 +1443,7 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                             try {
                               String? uploadedPhotoUrl;
                               // Upload logic
-                              if (_agendaImageBytes != null) {
+                              if (agendaImageBytes != null) {
                                 final user =
                                     Supabase.instance.client.auth.currentUser;
                                 final fileName =
@@ -1452,7 +1453,7 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                                     .from('agenda_photos')
                                     .uploadBinary(
                                       fileName,
-                                      _agendaImageBytes!,
+                                      agendaImageBytes!,
                                       fileOptions: const FileOptions(
                                         contentType: 'image/jpeg',
                                       ),

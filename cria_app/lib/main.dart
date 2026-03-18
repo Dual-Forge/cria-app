@@ -5,7 +5,6 @@ import 'package:intl/date_symbol_data_local.dart'; // Para formatar datas
 import 'package:go_router/go_router.dart';
 import 'package:url_strategy/url_strategy.dart'; // Remove o '#' da URL na Web
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_web_plugins/url_strategy.dart';
 
 // Importa o arquivo que controla o fluxo de entrada
 import 'screens/auth_flow_screens.dart';

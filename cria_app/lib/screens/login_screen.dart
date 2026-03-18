@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'main_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -52,10 +51,11 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } on AuthException catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.message), backgroundColor: Colors.redAccent),
         );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -76,10 +76,11 @@ class _LoginScreenState extends State<LoginScreen> {
         redirectTo: redirectUrl,
       );
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text("Erro Google: $e")));
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -218,7 +219,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: OutlinedButton.icon(
                       onPressed: _isLoading ? null : _signInWithGoogle,
                       icon: Image.network(
-                        'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_\"G\"_logo.svg/1200px-Google_\"G\"_logo.svg.png',
+                        'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_"G"_logo.svg/1200px-Google_"G"_logo.svg.png',
                         height: 20,
                       ),
                       label: const Text(

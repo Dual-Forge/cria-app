@@ -291,8 +291,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading)
+    if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -725,7 +726,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 15),
                   ],
                   DropdownButtonFormField<String>(
-                    value: _babyGender,
+                    initialValue: _babyGender,
                     decoration: InputDecoration(
                       labelText: "Sexo do Bebê",
                       prefixIcon: const Icon(Icons.palette),
@@ -801,12 +802,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         .eq('id', Supabase.instance.client.auth.currentUser!.id)
                         .single(),
                     builder: (context, AsyncSnapshot snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting)
+                      if (snapshot.connectionState == ConnectionState.waiting) {
                         return const SizedBox.shrink();
+                      }
                       if (snapshot.hasError ||
                           snapshot.data == null ||
-                          snapshot.data['families'] == null)
+                          snapshot.data['families'] == null) {
                         return const SizedBox.shrink();
+                      }
 
                       final String inviteCode = snapshot
                           .data['families']['invite_code']
@@ -861,10 +864,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     onTap: () async {
                       await Supabase.instance.client.auth.signOut();
-                      if (mounted)
+                      if (mounted) {
                         Navigator.of(
                           context,
                         ).popUntil((route) => route.isFirst);
+                      }
                     },
                   ),
                 ],

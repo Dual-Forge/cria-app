@@ -160,10 +160,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         );
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text("Erro: $e")));
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -272,7 +273,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 const SizedBox(width: 15),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedRole,
+                    initialValue: _selectedRole,
                     decoration: _inputDecoration("Sou...", Icons.people),
                     items: const [
                       DropdownMenuItem(value: 'mae', child: Text("Mamãe")),
@@ -316,7 +317,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 const SizedBox(width: 15),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedBloodType,
+                    initialValue: _selectedBloodType,
                     decoration: _inputDecoration("Sangue", Icons.water_drop),
                     items: _bloodTypes
                         .map((t) => DropdownMenuItem(value: t, child: Text(t)))

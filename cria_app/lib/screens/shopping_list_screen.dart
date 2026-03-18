@@ -178,8 +178,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _itemsStream,
       builder: (context, snapshot) {
-        if (!snapshot.hasData)
+        if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
+        }
 
         final allItemsRaw = snapshot.data!;
 
@@ -535,10 +536,12 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
               setStateSheet(() => isScraping = true);
               final data = await _scrapeLink(linkController.text);
               if (data.isNotEmpty) {
-                if (data['title']!.isNotEmpty)
+                if (data['title']!.isNotEmpty) {
                   nameController.text = data['title']!;
-                if (data['price']!.isNotEmpty)
+                }
+                if (data['price']!.isNotEmpty) {
                   priceController.text = data['price']!;
+                }
                 if (data['image']!.isNotEmpty) scrapedImageUrl = data['image'];
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -685,7 +688,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                           children: [
                             Expanded(
                               child: DropdownButtonFormField<String>(
-                                value: selectedCategory,
+                                initialValue: selectedCategory,
                                 decoration: const InputDecoration(
                                   labelText: "Categoria",
                                   border: OutlineInputBorder(),
@@ -717,7 +720,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                         ),
                         const SizedBox(height: 15),
                         DropdownButtonFormField<String>(
-                          value: selectedAge,
+                          initialValue: selectedAge,
                           decoration: const InputDecoration(
                             labelText: "Faixa Etária (Opcional)",
                             border: OutlineInputBorder(),
@@ -895,8 +898,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                                               });
                                         }
 
-                                        if (context.mounted)
+                                        if (context.mounted) {
                                           Navigator.pop(context);
+                                        }
                                       } catch (e) {
                                         setStateSheet(
                                           () => isUploading = false,
@@ -937,8 +941,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   }
 
   Widget _buildFinancialChart(List<Map<String, dynamic>> items) {
-    if (items.isEmpty)
+    if (items.isEmpty) {
       return const Text("Adicione itens com valores para ver o gráfico.");
+    }
     return Column(
       children: _categoriesConfig.map((cat) {
         final catItems = items

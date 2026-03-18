@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter/foundation.dart'; // Para kIsWeb
+// Para kIsWeb
 import 'package:intl/intl.dart';
 
 class DiaryScreen extends StatefulWidget {
@@ -107,10 +107,11 @@ class _DiaryScreenState extends State<DiaryScreen> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       setState(() => _isUploading = false);
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text("Erro: $e")));
+      }
     }
   }
 
@@ -143,8 +144,9 @@ class _DiaryScreenState extends State<DiaryScreen> {
                 source: source,
                 imageQuality: 50,
               );
-              if (pickedFile != null)
+              if (pickedFile != null) {
                 setStateSheet(() => _imageFile = File(pickedFile.path));
+              }
             }
 
             return DraggableScrollableSheet(
@@ -371,10 +373,11 @@ class _DiaryScreenState extends State<DiaryScreen> {
             .eq('user_id', user.id)
             .order('entry_date', ascending: false),
         builder: (context, snapshot) {
-          if (!snapshot.hasData)
+          if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
+          }
           final entries = snapshot.data!;
-          if (entries.isEmpty)
+          if (entries.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -388,6 +391,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                 ],
               ),
             );
+          }
 
           return ListView.builder(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
