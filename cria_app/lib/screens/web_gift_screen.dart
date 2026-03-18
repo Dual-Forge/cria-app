@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../utils/app_colors.dart';
+import '../utils/price_formatter.dart';
 
-const Color kTeal = Color(0xFF28C9C1);
-const Color kBgColor = Color(0xFFEAF8F8);
-const Color kTextColor = Color(0xFF4A4A4A);
-const Color kLightGrey = Color(0xFFF5F5F5);
+const int kWeeksPregnancy = 20;
+const int kInstallments = 6;
 
 class WebGiftScreen extends StatefulWidget {
   final String familyId;
@@ -21,7 +20,7 @@ class _WebGiftScreenState extends State<WebGiftScreen> {
   String _errorMessage = '';
   Map<String, dynamic>? _familyData;
   List<Map<String, dynamic>> _giftItems = [];
-  List<Map<String, dynamic>> _cartItems = [];
+  final List<Map<String, dynamic>> _cartItems = [];
 
   final _gridKey = GlobalKey();
 
@@ -544,14 +543,20 @@ class _WebGiftScreenState extends State<WebGiftScreen> {
 class QuickViewModal extends StatelessWidget {
   final Map<String, dynamic> item;
   final VoidCallback onAdd;
+  final String stockHint;
 
-  const QuickViewModal({super.key, required this.item, required this.onAdd});
+  const QuickViewModal({
+    super.key,
+    required this.item,
+    required this.onAdd,
+    this.stockHint = 'Resta apenas 1 unidade',
+  });
 
   @override
   Widget build(BuildContext context) {
     final price = double.tryParse(item['price']?.toString() ?? '0') ?? 0.0;
     final isPriceValid = price > 0;
-    final installment = isPriceValid ? price / 6 : 0;
+    final installment = isPriceValid ? price / kInstallments : 0.0;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -585,7 +590,7 @@ class QuickViewModal extends StatelessWidget {
             const SizedBox(height: 15),
             if (isPriceValid) ...[
               Text(
-                item['price'].toString().replaceAll('.', ','),
+                formatBRL(price),
                 style: TextStyle(
                   fontSize: 16,
                   decoration: TextDecoration.lineThrough,
@@ -594,7 +599,7 @@ class QuickViewModal extends StatelessWidget {
               ),
               const SizedBox(height: 5),
               Text(
-                'ou até 6x de ${installment.toStringAsFixed(2).replaceAll('.', ',')}',
+                'ou até ${kInstallments}x de ${formatBRL(installment)}',
                 style: const TextStyle(
                   fontSize: 18,
                   color: kTeal,
@@ -603,9 +608,9 @@ class QuickViewModal extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 20),
-            const Text(
-              'Resta apenas 1 unidade',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
+            Text(
+              stockHint,
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
             ),
             const SizedBox(height: 20),
             SizedBox(
@@ -765,7 +770,7 @@ class _CartModalState extends State<CartModal> {
                           ),
                           const SizedBox(height: 5),
                           Text(
-                            'R\$ ${price.toStringAsFixed(2).replaceAll('.', ',')}',
+                            'R\$ ${formatBRL(price)}',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ],
@@ -788,7 +793,7 @@ class _CartModalState extends State<CartModal> {
         Align(
           alignment: Alignment.centerRight,
           child: Text(
-            'Total: R\$ ${_totalValue.toStringAsFixed(2).replaceAll('.', ',')}',
+            'Total: R\$ ${formatBRL(_totalValue)}',
             style: const TextStyle(
               fontSize: 20,
               color: kTextColor,

@@ -707,7 +707,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             Clipboard.setData(
                               ClipboardData(
                                 text:
-                                    'https://app-cria.vercel.app/presentes/$_familyId',
+                                    'https://web-jade-ten-51.vercel.app/presentes/$_familyId',
                               ),
                             );
                             ScaffoldMessenger.of(context).showSnackBar(

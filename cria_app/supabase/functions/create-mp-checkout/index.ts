@@ -29,9 +29,9 @@ serve(async (req) => {
     const preferenceData = {
       items: mpItems,
       back_urls: {
-        success: `https://app-cria.vercel.app/presentes/${family_id}?payment=success`,
-        failure: `https://app-cria.vercel.app/presentes/${family_id}?payment=failure`,
-        pending: `https://app-cria.vercel.app/presentes/${family_id}?payment=pending`
+        success: `https://web-jade-ten-51.vercel.app/presentes/${family_id}?payment=success`,
+        failure: `https://web-jade-ten-51.vercel.app/presentes/${family_id}?payment=failure`,
+        pending: `https://web-jade-ten-51.vercel.app/presentes/${family_id}?payment=pending`
       },
       auto_return: "approved",
       notification_url: "https://drkuxfafxoruuvszowld.supabase.co/functions/v1/mp-webhook",

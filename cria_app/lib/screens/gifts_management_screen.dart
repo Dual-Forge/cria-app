@@ -152,7 +152,7 @@ class _GiftsManagementScreenState extends State<GiftsManagementScreen> {
               tooltip: 'Compartilhar Link Público',
               onPressed: () {
                 final link =
-                    'https://app-cria.vercel.app/presentes/${widget.familyId}';
+                    'https://web-jade-ten-51.vercel.app/presentes/${widget.familyId}';
                 Clipboard.setData(ClipboardData(text: link));
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(

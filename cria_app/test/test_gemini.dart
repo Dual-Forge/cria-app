@@ -1,7 +1,8 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
 
 void main() async {
-  final apiKey = 'AIzaSyAZHuiInkMzYfMTXKhrDe0J0GY0WVe2erE';
+  // API key deve ser injetada via variável de ambiente GEMINI_API_KEY
+  final apiKey = const String.fromEnvironment('GEMINI_API_KEY');
   final model = GenerativeModel(model: 'gemini-2.5-flash', apiKey: apiKey);
 
   try {
