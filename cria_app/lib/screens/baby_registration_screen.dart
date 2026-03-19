@@ -51,16 +51,18 @@ class _BabyRegistrationScreenState extends State<BabyRegistrationScreen> {
         }
       } else {
         // Caso de erro raro (usuário sem família)
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Erro: Família não encontrada.")),
           );
+        }
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text("Erro: $e")));
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

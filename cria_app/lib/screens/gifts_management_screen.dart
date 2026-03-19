@@ -83,39 +83,46 @@ class _GiftsManagementScreenState extends State<GiftsManagementScreen> {
   }
 
   Future<void> _sendThankYou(Map<String, dynamic> gift) async {
-    final phone =
-        gift['giver_phone']?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '';
-    final giverNickname = gift['giver_nickname'] ?? gift['giver_name'];
-    final itemObj = gift['items'] as Map<String, dynamic>?;
-    final itemName = itemObj != null ? itemObj['name'] : 'seu presente';
+    // 1. Define o nome ou apelido (Requisito 7.2)
+    final giverNameOrNickname = gift['giver_nickname']?.toString().isNotEmpty == true 
+        ? gift['giver_nickname'] 
+        : (gift['giver_name'] ?? 'Padrinho/Madrinha');
 
-    final parentName = _currentUserName ?? 'Nós';
-    final baby = _babyName ?? 'nosso bebê';
+    // 2. Limpa o telefone e garante o prefixo 55 apenas se necessário
+    String rawPhone = gift['giver_phone']?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '';
+    if (rawPhone.isNotEmpty && !rawPhone.startsWith('55')) {
+      rawPhone = '55$rawPhone';
+    }
 
-    final text =
-        'Oi $giverNickname, sou $parentName! Muito obrigado por presentear o(a) $baby com $itemName. Amamos o carinho! ❤️';
+    if (rawPhone.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Telefone não disponível para este doador.')),
+        );
+      }
+      return;
+    }
+
+    // 3. Formata a mensagem padrão (Requisito 8.3 e 8.4)
+    final text = 'Oi $giverNameOrNickname, muito obrigado pelo presente! 💛';
     final encodedText = Uri.encodeComponent(text);
-
-    final url = Uri.parse('https://wa.me/55$phone?text=$encodedText');
+    final url = Uri.parse('https://wa.me/$rawPhone?text=$encodedText');
 
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
 
-      // Update DB to mark as thanked
+      // Lógica de atualização do banco (Mantida conforme o original)
       try {
         final currentUserId = Supabase.instance.client.auth.currentUser?.id;
         final currentThankedBy = List<String>.from(gift['thanked_by'] ?? []);
 
-        if (currentUserId != null &&
-            !currentThankedBy.contains(currentUserId)) {
+        if (currentUserId != null && !currentThankedBy.contains(currentUserId)) {
           currentThankedBy.add(currentUserId);
-
           await Supabase.instance.client
               .from('gift_contributions')
               .update({'thanked': true, 'thanked_by': currentThankedBy})
               .eq('id', gift['id']);
 
-          // Update local state
           setState(() {
             final index = _gifts.indexWhere((g) => g['id'] == gift['id']);
             if (index != -1) {

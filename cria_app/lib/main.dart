@@ -6,9 +6,10 @@ import 'package:go_router/go_router.dart';
 import 'package:url_strategy/url_strategy.dart'; // Remove o '#' da URL na Web
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-// Importa o arquivo que controla o fluxo de entrada
-import 'screens/auth_flow_screens.dart';
-import 'screens/web_gift_screen.dart';
+// Importações das telas e serviços
+import 'package:cria_app/screens/auth_flow_screens.dart';
+import 'package:cria_app/screens/web_gift_screen.dart';
+import 'package:cria_app/services/payment_service.dart'; // NOVO: Import do serviço de pagamento
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,7 +44,16 @@ class CriaApp extends StatelessWidget {
         path: '/presentes/:id',
         builder: (context, state) {
           final familyId = state.pathParameters['id']!;
-          return WebGiftScreen(familyId: familyId);
+          
+          // Instancia o PaymentService usando o cliente do Supabase
+          final paymentService = PaymentService(Supabase.instance.client);
+
+          // Retorna a WebGiftScreen com os parâmetros exigidos pelo novo construtor (Task 10.1)
+          return WebGiftScreen(
+            familyId: familyId,
+            paymentService: paymentService,
+            selectedItems: const [], // Inicializa vazio para entrada via URL direta
+          );
         },
       ),
     ],
