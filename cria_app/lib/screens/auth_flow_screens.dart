@@ -30,7 +30,16 @@ class AuthGateScreen extends StatelessWidget {
             // Enquanto checa o banco, mostra um carregamento
             if (profileSnapshot.connectionState == ConnectionState.waiting) {
               return const Scaffold(
+                backgroundColor: Colors.transparent,
                 body: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            if (profileSnapshot.hasError) {
+              return Scaffold(
+                body: Center(
+                  child: Text("Erro ao carregar perfil: ${profileSnapshot.error}"),
+                ),
               );
             }
 

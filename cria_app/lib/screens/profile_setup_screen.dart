@@ -1,4 +1,4 @@
-import 'dart:io';
+// import 'dart:io'; // Removido para compatibilidade Web
 import 'dart:math';
 import 'package:flutter/foundation.dart'; // Para kIsWeb
 import 'package:flutter/material.dart';
@@ -29,7 +29,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   DateTime? _selectedDate;
 
   // Imagem
-  File? _mobileImageFile;
+  XFile? _imageFile;
   Uint8List? _webImageBytes;
   String? _uploadedPhotoUrl;
 
@@ -54,17 +54,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     );
 
     if (picked != null) {
-      if (kIsWeb) {
-        final bytes = await picked.readAsBytes();
-        setState(() => _webImageBytes = bytes);
-      } else {
-        setState(() => _mobileImageFile = File(picked.path));
-      }
+      setState(() => _imageFile = picked);
+      final bytes = await picked.readAsBytes();
+      setState(() => _webImageBytes = bytes);
     }
   }
 
   Future<String?> _uploadImage(String userId) async {
-    if (_mobileImageFile == null && _webImageBytes == null) return null;
+    if (_imageFile == null) return null;
 
     try {
       final fileName =
@@ -78,10 +75,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               _webImageBytes!,
               fileOptions: const FileOptions(contentType: 'image/jpeg'),
             );
-      } else if (_mobileImageFile != null) {
+      } else {
+        // No Mobile usamos o path do XFile, o Supabase SDK cuida do resto
+        // ou podemos ler como bytes para ser universal
+        final bytes = await _imageFile!.readAsBytes();
         await Supabase.instance.client.storage
             .from('avatars')
-            .upload(fileName, _mobileImageFile!);
+            .uploadBinary(
+              fileName,
+              bytes,
+              fileOptions: const FileOptions(contentType: 'image/jpeg'),
+            );
       }
 
       return Supabase.instance.client.storage
@@ -183,10 +187,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     final themeColor = Colors.purple;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text("Criar Perfil"),
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.black,
       ),
@@ -215,14 +219,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                               image: MemoryImage(_webImageBytes!),
                               fit: BoxFit.cover,
                             )
-                          : (_mobileImageFile != null)
-                          ? DecorationImage(
-                              image: FileImage(_mobileImageFile!),
-                              fit: BoxFit.cover,
-                            )
                           : null,
                     ),
-                    child: (_webImageBytes == null && _mobileImageFile == null)
+                    child: (_webImageBytes == null)
                         ? Icon(
                             Icons.person_add,
                             size: 50,

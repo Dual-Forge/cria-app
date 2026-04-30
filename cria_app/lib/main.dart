@@ -1,29 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_localizations/flutter_localizations.dart'; // Para deixar o calendário em PT-BR
-import 'package:intl/date_symbol_data_local.dart'; // Para formatar datas
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_strategy/url_strategy.dart'; // Remove o '#' da URL na Web
+import 'package:url_strategy/url_strategy.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-// Importações das telas e serviços
 import 'package:cria_app/screens/auth_flow_screens.dart';
 import 'package:cria_app/screens/web_gift_screen.dart';
-import 'package:cria_app/services/payment_service.dart'; // NOVO: Import do serviço de pagamento
+import 'package:cria_app/services/payment_service.dart';
+import 'package:cria_app/widgets/app_background.dart';
+
+// IMPORTANTE: Importamos a nova vitrine pública!
+import 'package:cria_app/screens/public_registry_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Load environment variables
   await dotenv.load(fileName: ".env");
-
-  // Remove o '#' da URL para navegação Web
   setPathUrlStrategy();
-
-  // Inicializa a formatação de datas em Português
   await initializeDateFormatting('pt_BR', null);
 
-  // --- CONFIGURAÇÃO DO SUPABASE ---
   await Supabase.initialize(
     url: 'https://drkuxfafxoruuvszowld.supabase.co',
     anonKey:
@@ -40,19 +36,31 @@ class CriaApp extends StatelessWidget {
     initialLocation: '/',
     routes: [
       GoRoute(path: '/', builder: (context, state) => const AuthGateScreen()),
+
+      // 1. ROTA PÚBLICA (Vitrine) - O link que os pais compartilham
       GoRoute(
         path: '/presentes/:id',
         builder: (context, state) {
           final familyId = state.pathParameters['id']!;
-          
-          // Instancia o PaymentService usando o cliente do Supabase
+          return PublicRegistryScreen(familyId: familyId); // Abre a nova tela!
+        },
+      ),
+
+      // 2. ROTA DE PAGAMENTO (Checkout) - Oculta, acessada após escolher o presente
+      GoRoute(
+        path: '/checkout/:id',
+        builder: (context, state) {
+          final familyId = state.pathParameters['id']!;
           final paymentService = PaymentService(Supabase.instance.client);
 
-          // Retorna a WebGiftScreen com os parâmetros exigidos pelo novo construtor (Task 10.1)
+          // Pega o item que o usuário selecionou na tela anterior
+          final selectedItems =
+              state.extra as List<Map<String, dynamic>>? ?? [];
+
           return WebGiftScreen(
             familyId: familyId,
             paymentService: paymentService,
-            selectedItems: const [], // Inicializa vazio para entrada via URL direta
+            selectedItems: selectedItems, // Envia para o Mercado Pago!
           );
         },
       ),
@@ -65,6 +73,10 @@ class CriaApp extends StatelessWidget {
       title: 'Cria',
       debugShowCheckedModeBanner: false,
       routerConfig: _router,
+      // Aplica o background global UMA vez, por trás de toda a navegação.
+      // GlobalBackgroundWrapper aceita child nullable e usa SizedBox.shrink()
+      // como fallback durante a inicialização do GoRouter no Web.
+      builder: (context, child) => GlobalBackgroundWrapper(child: child),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple),
         useMaterial3: true,

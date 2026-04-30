@@ -1,4 +1,5 @@
-import 'dart:io';
+// import 'dart:io'; // Removido para compatibilidade Web
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
@@ -23,7 +24,8 @@ class _DiaryScreenState extends State<DiaryScreen> {
   final _weightController = TextEditingController();
   final _noteController = TextEditingController();
   String _selectedMood = 'Feliz';
-  File? _imageFile;
+  XFile? _imageFile;
+  Uint8List? _imageBytes;
   bool _isUploading = false;
 
   final List<Map<String, dynamic>> _moods = [
@@ -61,12 +63,16 @@ class _DiaryScreenState extends State<DiaryScreen> {
       // Logica simples: Se _imageFile != null, upload. Se não, se edição, não mexe (mas user pode ter removido).
       // Na v1 vamos assumir upload novo substitui.
 
-      if (_imageFile != null) {
+      if (_imageFile != null && _imageBytes != null) {
         final fileName =
             'docs/${user!.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
         await Supabase.instance.client.storage
             .from('diary_photos')
-            .upload(fileName, _imageFile!);
+            .uploadBinary(
+              fileName,
+              _imageBytes!,
+              fileOptions: const FileOptions(contentType: 'image/jpeg'),
+            );
         uploadedImageUrl = Supabase.instance.client.storage
             .from('diary_photos')
             .getPublicUrl(fileName);
@@ -100,6 +106,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
       _noteController.clear();
       setState(() {
         _imageFile = null;
+        _imageBytes = null;
         _selectedMood = 'Feliz';
         _isUploading = false;
         _editingId = null;
@@ -129,6 +136,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
       _weightController.clear();
       _selectedMood = 'Feliz';
       _imageFile = null;
+      _imageBytes = null;
     }
 
     showModalBottomSheet(
@@ -145,7 +153,11 @@ class _DiaryScreenState extends State<DiaryScreen> {
                 imageQuality: 50,
               );
               if (pickedFile != null) {
-                setStateSheet(() => _imageFile = File(pickedFile.path));
+                final bytes = await pickedFile.readAsBytes();
+                setStateSheet(() {
+                  _imageFile = pickedFile;
+                  _imageBytes = bytes;
+                });
               }
             }
 
@@ -278,16 +290,20 @@ class _DiaryScreenState extends State<DiaryScreen> {
                           children: [
                             ClipRRect(
                               borderRadius: BorderRadius.circular(15),
-                              child: Image.file(
-                                _imageFile!,
-                                height: 200,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              ),
+                              child: _imageBytes != null
+                                  ? Image.memory(
+                                      _imageBytes!,
+                                      height: 200,
+                                      width: double.infinity,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Container(height: 200),
                             ),
                             IconButton(
-                              onPressed: () =>
-                                  setStateSheet(() => _imageFile = null),
+                              onPressed: () => setStateSheet(() {
+                                _imageFile = null;
+                                _imageBytes = null;
+                              }),
                               icon: const CircleAvatar(
                                 backgroundColor: Colors.white,
                                 child: Icon(Icons.close, color: Colors.red),
@@ -358,7 +374,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
     if (user == null) return const Center(child: Text("Erro Auth"));
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddEntrySheet,
         label: const Text("Registrar"),

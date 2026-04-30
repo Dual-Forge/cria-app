@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
@@ -10,11 +12,14 @@ import '../services/gemini_service.dart';
 import 'chatbot_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
+import 'shopping_list_screen.dart';
+import '../widgets/baby_card/baby_card_widget.dart';
 
 class HomePregnancyScreen extends StatefulWidget {
   final Color themeColor;
   final String? babyName;
   final String? babyGender;
+  final String? babyPhotoUrl;
   final DateTime? dumDate;
   final String? familyCode;
   final String? familyId;
@@ -24,6 +29,7 @@ class HomePregnancyScreen extends StatefulWidget {
     required this.themeColor,
     this.babyName,
     this.babyGender,
+    this.babyPhotoUrl,
     this.dumDate,
     this.familyCode,
     this.familyId,
@@ -34,8 +40,10 @@ class HomePregnancyScreen extends StatefulWidget {
 }
 
 class _HomePregnancyScreenState extends State<HomePregnancyScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late TabController _tabController;
+  late AnimationController _heartController;
+  late Animation<double> _heartScale;
 
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
@@ -54,6 +62,22 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
     super.initState();
     _selectedDay = _focusedDay;
     _tabController = TabController(length: 2, vsync: this);
+
+    _heartController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+
+    _heartScale = Tween<double>(begin: 0.95, end: 1.05).animate(
+      CurvedAnimation(parent: _heartController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _heartController.dispose();
+    super.dispose();
   }
 
   int _calculateWeeks(DateTime? dum) {
@@ -62,6 +86,19 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
     final diff = now.difference(dum);
     int w = (diff.inDays / 7).floor();
     return w > 42 ? 42 : (w < 0 ? 0 : w);
+  }
+
+  /// Converts gestational week (1-42) to pregnancy month (1-9).
+  int _weekToMonth(int week) {
+    if (week <= 4) return 1;
+    if (week <= 8) return 2;
+    if (week <= 13) return 3;
+    if (week <= 17) return 4;
+    if (week <= 22) return 5;
+    if (week <= 27) return 6;
+    if (week <= 31) return 7;
+    if (week <= 35) return 8;
+    return 9;
   }
 
   Future<void> _loadAITips(int weeks, [String userRole = 'mae']) async {
@@ -148,7 +185,7 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE),
+      backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -223,12 +260,107 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
             ),
           );
         },
-        backgroundColor: Colors.teal[600],
+        backgroundColor: const ui.Color.fromARGB(255, 255, 128, 198),
         icon: const Icon(Icons.auto_awesome, color: Colors.white),
         label: const Text(
-          'Cria AI',
+          'Doula',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDynamicTitle(DateTime? actualDumDate) {
+    String nameToDisplay = widget.babyName ?? "seu bebê";
+    String textPrefix = "Aguardando a chegada de ";
+    String textSuffix = ".";
+    bool isBorn = false;
+
+    if (actualDumDate != null) {
+      final edd = actualDumDate.add(const Duration(days: 280));
+      final daysRemaining = edd.difference(DateTime.now()).inDays;
+
+      if (daysRemaining > 0) {
+        textPrefix =
+            "Faltam aproximadamente $daysRemaining dias para a chegada de ";
+        textSuffix = ".";
+      } else if (daysRemaining == 0) {
+        textPrefix = "É hoje! O grande dia da chegada de ";
+        textSuffix = ".";
+      } else {
+        isBorn = true;
+        textPrefix = "";
+        textSuffix = " nasceu há ${daysRemaining.abs()} dias!";
+      }
+    }
+
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _heartScale,
+        builder: (context, child) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            child: RichText(
+              textAlign: TextAlign.center,
+              text: TextSpan(
+                style: GoogleFonts.petitFormalScript(
+                  fontSize: 26,
+                  color: const Color(0xFF2D3142),
+                ),
+                children: [
+                  if (isBorn) ...[
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.baseline,
+                      baseline: TextBaseline.alphabetic,
+                      child: Transform.scale(
+                        scale: _heartScale.value,
+                        child: Text(
+                          nameToDisplay,
+                          style: GoogleFonts.petitFormalScript(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: widget.themeColor,
+                            shadows: [
+                              Shadow(
+                                color: widget.themeColor.withValues(alpha: 0.5),
+                                blurRadius: 10 * _heartScale.value,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    TextSpan(text: textSuffix),
+                  ] else ...[
+                    TextSpan(text: textPrefix),
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.baseline,
+                      baseline: TextBaseline.alphabetic,
+                      child: Transform.scale(
+                        scale: _heartScale.value,
+                        child: Text(
+                          nameToDisplay,
+                          style: GoogleFonts.petitFormalScript(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: widget.themeColor,
+                            shadows: [
+                              Shadow(
+                                color: widget.themeColor.withValues(alpha: 0.5),
+                                blurRadius: 10 * _heartScale.value,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    TextSpan(text: textSuffix),
+                  ],
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -251,7 +383,8 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
       builder: (context, snapshot) {
         Map<String, dynamic>? momProfile;
         Map<String, dynamic>? dadProfile;
-        int currentWeeks = _calculateWeeks(widget.dumDate); // fallback default
+        DateTime? actualDumDate = widget.dumDate;
+        int currentWeeks = _calculateWeeks(actualDumDate);
         String role = 'mae';
 
         if (snapshot.hasData) {
@@ -266,9 +399,8 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
           try {
             momProfile = profiles.firstWhere((p) => p['role'] == 'mae');
             if (momProfile['dum_date'] != null) {
-              currentWeeks = _calculateWeeks(
-                DateTime.parse(momProfile['dum_date']),
-              );
+              actualDumDate = DateTime.parse(momProfile['dum_date']);
+              currentWeeks = _calculateWeeks(actualDumDate);
             }
           } catch (_) {}
           try {
@@ -287,283 +419,383 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
         }
 
         final babyData = BabyData.getData(currentWeeks);
+        final double screenWidth = MediaQuery.of(context).size.width;
+        final double heartContainerSize = screenWidth * 0.85;
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 150, 20, 20),
+        return CustomScrollView(
           physics: const BouncingScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: SizedBox(
-                  height: 140,
-                  width: 300,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Positioned(
-                        left: 20,
-                        top: 10,
-                        child: _buildAvatarFloat(
-                          dadProfile,
-                          Colors.blueGrey,
-                          50,
-                          "Pai",
-                        ),
-                      ),
-                      Positioned(
-                        right: 20,
-                        top: 10,
-                        child: _buildAvatarFloat(
-                          momProfile,
-                          Colors.pinkAccent.shade100,
-                          50,
-                          "Mãe",
-                        ),
-                      ),
-                      Positioned(
-                        top: 20,
-                        left: 0,
-                        right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: widget.themeColor.withOpacity(0.2),
-                                blurRadius: 20,
-                                spreadRadius: 5,
-                              ),
-                            ],
-                          ),
-                          child: CircleAvatar(
-                            radius: 45,
-                            backgroundColor: widget.themeColor.withOpacity(
-                              0.05,
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize
-                                  .min, // Changed to min to center vertically
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.child_care_rounded,
-                                  color: widget.themeColor,
-                                  size: 38,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  centerName,
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w900,
-                                    color: widget.themeColor.withOpacity(0.8),
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      widget.themeColor,
-                      widget.themeColor.withBlue(widget.themeColor.blue + 30),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: widget.themeColor.withOpacity(0.4),
-                      blurRadius: 15,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Stack(
+          slivers: [
+            // --- FASE 2: HERO SECTION (100vh) ---
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Positioned(
-                      right: -20,
-                      top: -20,
-                      child: Container(
-                        width: 150,
-                        height: 150,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
+                    const Spacer(flex: 3),
+                    Transform.translate(
+                      offset: const Offset(
+                        0,
+                        45,
+                      ), // Puxa o texto para perto do coração (Auréola)
+                      child: _buildDynamicTitle(actualDumDate),
                     ),
 
-                    Padding(
-                      padding: const EdgeInsets.all(25),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    // Contêiner principal com o Coração e os Avatares
+                    SizedBox(
+                      width: heartContainerSize,
+                      height: heartContainerSize,
+                      child: Stack(
+                        alignment: Alignment.center,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "SEMANA",
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.7),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 2,
+                          // 1. Fundo do Coração Pulsante
+                          AnimatedBuilder(
+                            animation: _heartScale,
+                            builder: (context, child) {
+                              return Transform.scale(
+                                scale: _heartScale.value,
+                                child: CustomPaint(
+                                  size: Size(
+                                    heartContainerSize,
+                                    heartContainerSize,
+                                  ),
+                                  painter: HeartBackgroundPainter(
+                                    color: widget.themeColor.withValues(
+                                      alpha: 0.08,
                                     ),
                                   ),
-                                  Text(
-                                    "$currentWeeks",
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 56,
-                                      height: 0.9,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Container(
-                                width: 80,
-                                height: 80,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.3),
-                                    width: 1,
-                                  ),
                                 ),
-                                child: Center(
-                                  child: Text(
-                                    "🍎",
-                                    style: const TextStyle(fontSize: 40),
-                                  ),
-                                ),
-                              ),
-                            ],
+                              );
+                            },
                           ),
-                          const SizedBox(height: 20),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  "Tamanho: ${babyData['fruit']}",
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                "~ ${babyData['weight']}",
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.9),
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
+
+                          // 2. Linha Tracejada Estática formando um Coração menor
+                          CustomPaint(
+                            size: Size(heartContainerSize, heartContainerSize),
+                            painter: HeartDashedPathPainter(
+                              color: widget.themeColor.withValues(alpha: 0.6),
+                            ),
+                          ),
+
+                          // 3. Avatares perfeitamente alinhados na linha
+                          // Mamãe (Topo Esquerdo)
+                          Positioned(
+                            left: heartContainerSize * 0.10,
+                            top: heartContainerSize * 0.15,
+                            child: _buildAvatarFloat(
+                              momProfile,
+                              Colors.pinkAccent.shade100,
+                              80,
+                              momProfile?['nickname'] ?? "Mamãe",
+                            ),
+                          ),
+
+                          // Papai (Topo Direito)
+                          Positioned(
+                            right: heartContainerSize * 0.10,
+                            top: heartContainerSize * 0.15,
+                            child: _buildAvatarFloat(
+                              dadProfile,
+                              Colors.blueGrey,
+                              80,
+                              dadProfile?['nickname'] ?? "Papai",
+                            ),
+                          ),
+
+                          // Bebê (Base Centro)
+                          Positioned(
+                            bottom: heartContainerSize * 0.0,
+                            child: _buildBabyAvatar(centerName),
                           ),
                         ],
                       ),
                     ),
+
+                    const Spacer(flex: 2),
+
+                    // Indicador de Scroll
+                    Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: widget.themeColor.withValues(alpha: 0.5),
+                      size: 40,
+                    ),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
+            ),
 
-              const SizedBox(height: 35),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Insights IA",
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF2D3142),
+            // --- AÇÕES RÁPIDAS ---
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  ChatbotScreen(babyName: widget.babyName),
+                            ),
+                          );
+                        },
+                        icon: const Icon(
+                          Icons.auto_awesome,
+                          color: Colors.white,
+                          size: 20,
                         ),
-                      ),
-                      if (_weeklyFocus != null)
-                        Text(
-                          _weeklyFocus!,
+                        label: const Text(
+                          "Chat com IA",
                           style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
                             fontSize: 13,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.blueAccent.withOpacity(0.1),
-                      shape: BoxShape.circle,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const ui.Color.fromARGB(
+                            255,
+                            255,
+                            128,
+                            198,
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 4,
+                          shadowColor: const ui.Color.fromARGB(
+                            255,
+                            255,
+                            128,
+                            198,
+                          ).withValues(alpha: 0.4),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.auto_awesome,
-                      color: Colors.blueAccent,
-                      size: 20,
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ShoppingListScreen(
+                                currentTheme: widget.themeColor,
+                                familyId: widget.familyId,
+                              ),
+                            ),
+                          );
+                        },
+                        icon: Icon(
+                          Icons.child_care,
+                          color: widget.themeColor,
+                          size: 20,
+                        ),
+                        label: Text(
+                          "Enxoval",
+                          style: TextStyle(
+                            color: widget.themeColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 4,
+                          shadowColor: Colors.black.withValues(alpha: 0.1),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              if (_isLoadingTips && _aiTips.isEmpty)
-                _buildShimmerTips()
-              else
-                SizedBox(
-                  height: 180,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: _aiTips.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 15),
-                    itemBuilder: (context, index) {
-                      return _buildPremiumTipCard(_aiTips[index], index);
-                    },
-                  ),
+                  ],
                 ),
+              ),
+            ),
 
-              const SizedBox(height: 100),
-            ],
-          ),
+            // --- FASE 3: BABY CARD (NOVO) ---
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                child: StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: widget.familyId != null
+                      ? Supabase.instance.client
+                            .from('baby_profile')
+                            .stream(primaryKey: ['id'])
+                            .eq('family_id', widget.familyId!)
+                      : const Stream.empty(),
+                  builder: (context, babySnapshot) {
+                    String? profilePhotoUrl;
+                    int? lastBpm;
+                    int kickCount = 0;
+                    DateTime? expectedDueDate;
+
+                    if (babySnapshot.hasData && babySnapshot.data!.isNotEmpty) {
+                      final babyProfile = babySnapshot.data!.first;
+                      profilePhotoUrl = babyProfile['profile_photo_url'];
+                      lastBpm = babyProfile['last_bpm'];
+                      kickCount = babyProfile['kick_count'] ?? 0;
+                      if (babyProfile['expected_due_date'] != null) {
+                        expectedDueDate = DateTime.parse(babyProfile['expected_due_date']);
+                      }
+                    }
+
+                    return BabyCardWidget(
+                      profilePhotoUrl: profilePhotoUrl,
+                      lastBpm: lastBpm,
+                      expectedDueDate: expectedDueDate,
+                      dumDate: actualDumDate,
+                      kickCount: kickCount,
+                      babyName: widget.babyName ?? 'Bebê',
+                      familyId: widget.familyId ?? '',
+                      themeColor: widget.themeColor,
+                      onKickCountUpdated: (newCount) {
+                        // Atualizar UI se necessário
+                      },
+                      onError: (error) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Erro: $error')),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ),
+
+            // --- FASE 4: INSIGHTS IA ---
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Insights IA",
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF2D3142),
+                              ),
+                            ),
+                            if (_weeklyFocus != null)
+                              Text(
+                                _weeklyFocus!,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.blueAccent.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.auto_awesome,
+                            color: Colors.blueAccent,
+                            size: 20,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    if (_isLoadingTips && _aiTips.isEmpty)
+                      _buildShimmerTips()
+                    else
+                      SizedBox(
+                        height: 180,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: _aiTips.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 15),
+                          itemBuilder: (context, index) {
+                            return _buildPremiumTipCard(_aiTips[index], index);
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         );
       },
+    );
+  }
+
+  Widget _buildBabyAvatar(String centerName) {
+    // Tamanho padronizado: 80x80
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 80,
+          height: 80,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: widget.themeColor.withValues(alpha: 0.2),
+                blurRadius: 20,
+                spreadRadius: 5,
+              ),
+            ],
+          ),
+          child: CircleAvatar(
+            backgroundColor: widget.themeColor.withValues(alpha: 0.05),
+            child:
+                widget.babyPhotoUrl != null && widget.babyPhotoUrl!.isNotEmpty
+                ? ClipOval(
+                    child: Image.network(
+                      widget.babyPhotoUrl!,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Icon(
+                        Icons.child_care_rounded,
+                        color: widget.themeColor,
+                        size: 40,
+                      ),
+                    ),
+                  )
+                : Icon(
+                    Icons.child_care_rounded,
+                    color: widget.themeColor,
+                    size: 40,
+                  ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          centerName,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF2D3142),
+          ),
+        ),
+      ],
     );
   }
 
@@ -574,11 +806,13 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
     String label,
   ) {
     final String? photoUrl = profile?['photo_url'];
+    // Size agora é sempre garantido em 80 de fora, mas o parâmetro 'size' dita o círculo
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: size,
-          height: size,
+          width: 80,
+          height: 80,
           decoration: BoxDecoration(
             color: Colors.white,
             shape: BoxShape.circle,
@@ -591,17 +825,43 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
             ],
           ),
           child: CircleAvatar(
-            radius: (size - 6) / 2, // Ensure it fits within the border
             backgroundColor: color.withValues(alpha: 0.1),
-            backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
-                ? NetworkImage(photoUrl)
-                : null,
-            child: (photoUrl == null || photoUrl.isEmpty)
-                ? Text(
-                    profile?['nickname']?[0]?.toUpperCase() ?? label[0],
-                    style: TextStyle(color: color, fontWeight: FontWeight.bold),
+            child: (photoUrl != null && photoUrl.isNotEmpty)
+                ? ClipOval(
+                    child: Image.network(
+                      photoUrl,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Text(
+                        profile?['nickname']?[0]?.toUpperCase() ??
+                            label[0].toUpperCase(),
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   )
-                : null,
+                : Text(
+                    profile?['nickname']?[0]?.toUpperCase() ??
+                        label[0].toUpperCase(),
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF2D3142),
           ),
         ),
       ],
@@ -1011,15 +1271,19 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
                   decoration: BoxDecoration(
                     color: widget.themeColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(15),
-                    image: hasPhoto
-                        ? DecorationImage(
-                            image: NetworkImage(apt['photo_url']),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
                   ),
                   child: hasPhoto
-                      ? null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(15),
+                          child: Image.network(
+                            apt['photo_url'],
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Icon(
+                              Icons.broken_image,
+                              color: widget.themeColor,
+                            ),
+                          ),
+                        )
                       : Icon(
                           Icons.description_outlined,
                           color: widget.themeColor,
@@ -1546,4 +1810,94 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
       ),
     );
   }
+}
+
+class HeartBackgroundPainter extends CustomPainter {
+  final Color color;
+
+  HeartBackgroundPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final path = _createHeartPath(size);
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class HeartDashedPathPainter extends CustomPainter {
+  final Color color;
+
+  HeartDashedPathPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final path = _createHeartPath(size);
+    final dashedPath = _createDashedPath(path, dashLength: 8, dashSpace: 6);
+
+    canvas.drawPath(dashedPath, paint);
+  }
+
+  Path _createDashedPath(
+    Path source, {
+    required double dashLength,
+    required double dashSpace,
+  }) {
+    final Path dest = Path();
+    for (final ui.PathMetric metric in source.computeMetrics()) {
+      double distance = 0.0;
+      while (distance < metric.length) {
+        final double length = dashLength;
+        dest.addPath(
+          metric.extractPath(distance, distance + length),
+          Offset.zero,
+        );
+        distance += length + dashSpace;
+      }
+    }
+    return dest;
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+Path _createHeartPath(Size size) {
+  final double width = size.width;
+  final double height = size.height;
+  final path = Path();
+  // Começa no cleft (centro-topo)
+  path.moveTo(0.5 * width, height * 0.35);
+  // Curva da orelha esquerda
+  path.cubicTo(
+    0.2 * width,
+    height * 0.05,
+    -0.25 * width,
+    height * 0.45,
+    0.5 * width,
+    height * 0.90,
+  );
+  // Volta para o cleft para curvar a direita
+  path.moveTo(0.5 * width, height * 0.35);
+  path.cubicTo(
+    0.8 * width,
+    height * 0.05,
+    1.25 * width,
+    height * 0.45,
+    0.5 * width,
+    height * 0.90,
+  );
+  return path;
 }

@@ -223,7 +223,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
             : (totalSpent / totalEstimatedCost);
 
         return Scaffold(
-          backgroundColor: Colors.grey[50],
+          backgroundColor: Colors.transparent,
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -773,19 +773,25 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                                         ),
                                       )
                                     : (scrapedImageUrl != null &&
-                                              scrapedImageUrl!.isNotEmpty
-                                          ? ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              child: Image.network(
-                                                scrapedImageUrl!,
-                                                fit: BoxFit.cover,
+                                            scrapedImageUrl!.isNotEmpty
+                                        ? ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                            child: Image.network(
+                                              scrapedImageUrl!,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error,
+                                                      stackTrace) =>
+                                                  const Center(
+                                                child: Icon(Icons.broken_image,
+                                                    color: Colors.grey),
                                               ),
-                                            )
-                                          : const Icon(
-                                              Icons.add_a_photo,
-                                              color: Colors.grey,
-                                            )),
+                                            ),
+                                          )
+                                        : const Icon(
+                                            Icons.add_a_photo,
+                                            color: Colors.grey,
+                                          )),
                               ),
                             ),
                             const SizedBox(width: 15),
@@ -1600,30 +1606,41 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(12),
                                   color: Colors.grey[100],
-                                  image: item['image_url'] != null
-                                      ? DecorationImage(
-                                          image: ResizeImage(
-                                            NetworkImage(item['image_url']),
-                                            width: 200,
-                                            policy: ResizeImagePolicy.fit,
-                                          ),
-                                          fit: BoxFit.cover,
+                                ),
+                                child: item['image_url'] != null
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: ColorFiltered(
                                           colorFilter: isPurchased
                                               ? const ColorFilter.mode(
                                                   Colors.grey,
                                                   BlendMode.saturation,
                                                 )
-                                              : null,
-                                        )
-                                      : null,
-                                ),
-                                child: item['image_url'] == null
-                                    ? Icon(
+                                              : const ColorFilter.mode(
+                                                  Colors.transparent,
+                                                  BlendMode.multiply,
+                                                ),
+                                          child: Image.network(
+                                            item['image_url'],
+                                            width: 70,
+                                            height: 70,
+                                            fit: BoxFit.cover,
+                                            cacheWidth: 200,
+                                            errorBuilder: (context, error,
+                                                    stackTrace) =>
+                                                Icon(
+                                              Icons.shopping_bag_outlined,
+                                              color: Colors.grey[400],
+                                              size: 30,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    : Icon(
                                         Icons.shopping_bag_outlined,
                                         color: Colors.grey[400],
                                         size: 30,
-                                      )
-                                    : null,
+                                      ),
                               ),
                             ),
                             const SizedBox(width: 15),

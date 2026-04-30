@@ -2,7 +2,6 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
@@ -15,12 +14,25 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
+
+    // LOG DETALHADO: Body recebido (sanitizado)
+    console.log(
+      "[Payment] Body recebido:",
+      JSON.stringify({
+        ...body,
+        giver_phone: body.giver_phone
+          ? body.giver_phone.slice(-4).padStart(11, "*")
+          : undefined,
+      }),
+    );
+
     const {
       items,
       family_id,
       giver_name,
       giver_nickname,
       giver_phone,
+      giver_email,
       message_to_parents,
     } = body;
 
@@ -96,19 +108,25 @@ serve(async (req) => {
 
     // Cria payload para a Checkout API do Mercado Pago
     const paymentData = {
-      transaction_amount: totalAmount,
+      transaction_amount: Number(totalAmount), // Garantir que é number
       description: `Presente para bebê - ${items.length} item(ns)`,
       payment_method_id: "pix",
       payer: {
-        email: "guest@cria.app", // Email genérico para guest checkout
-        first_name: giver_name.split(" ")[0],
-        last_name: giver_name.split(" ").slice(1).join(" ") || giver_name,
+        // Se o giver_email vier vazio, ele usa um e-mail padrão para não dar erro
+        email: giver_email && giver_email.includes("@")
+          ? giver_email
+          : "convidado@cria.app",
+        first_name: giver_name ? giver_name.split(" ")[0] : "Convidado",
+        last_name: giver_name && giver_name.includes(" ")
+          ? giver_name.split(" ").slice(1).join(" ")
+          : "da Silva",
       },
       metadata: {
         family_id: family_id || "",
-        giver_name,
+        giver_name: giver_name || "Anônimo",
         giver_nickname: giver_nickname || "",
-        giver_phone,
+        giver_phone: giver_phone || "",
+        giver_email: giver_email || "",
         message_to_parents: message_to_parents || "",
         item_ids: items.map((i: any) => i.id).join(","),
       },
@@ -116,6 +134,23 @@ serve(async (req) => {
         Deno.env.get("SUPABASE_URL")
       }/functions/v1/mp-webhook`,
     };
+
+    // LOG DETALHADO: Payload que será enviado ao MP (sanitizado)
+    console.log(
+      "[Payment] Payload para Mercado Pago:",
+      JSON.stringify({
+        ...paymentData,
+        payer: {
+          ...paymentData.payer,
+        },
+        metadata: {
+          ...paymentData.metadata,
+          giver_phone: paymentData.metadata.giver_phone
+            ? paymentData.metadata.giver_phone.slice(-4).padStart(11, "*")
+            : undefined,
+        },
+      }),
+    );
 
     // Chama Checkout API v1/payments
     const mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
@@ -130,7 +165,13 @@ serve(async (req) => {
 
     if (!mpResponse.ok) {
       const errorData = await mpResponse.json();
-      console.error("[Payment] MP API Error:", sanitizeForLog(errorData));
+
+      // LOG DETALHADO: Erro completo do Mercado Pago
+      console.error("[Payment] MP API Error - Status:", mpResponse.status);
+      console.error(
+        "[Payment] MP API Error - Response:",
+        JSON.stringify(errorData),
+      );
 
       // Tratar erros 502/503 da API do Mercado Pago
       if (mpResponse.status >= 500) {
@@ -139,6 +180,7 @@ serve(async (req) => {
             error:
               "Serviço de pagamento temporariamente indisponível. Tente novamente em alguns instantes.",
             retry: true,
+            mp_error: errorData, // Incluir detalhes do erro para debug
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -147,8 +189,18 @@ serve(async (req) => {
         );
       }
 
-      throw new Error(
-        "Pagamento não pôde ser processado. Verifique os dados e tente novamente.",
+      // Retornar erro 400 com detalhes do Mercado Pago
+      return new Response(
+        JSON.stringify({
+          error:
+            "Pagamento não pôde ser processado. Verifique os dados e tente novamente.",
+          mp_error: errorData,
+          mp_status: mpResponse.status,
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        },
       );
     }
 

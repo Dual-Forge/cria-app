@@ -292,11 +292,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text("Ajustes & Perfil"),
         backgroundColor: widget.themeColor,
@@ -325,16 +328,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: CircleAvatar(
                           radius: 50,
                           backgroundColor: Colors.grey[200],
-                          backgroundImage: _photoUrl != null
-                              ? NetworkImage(_photoUrl!)
-                              : null,
-                          child: _photoUrl == null
-                              ? Icon(
+                          child: _photoUrl != null
+                              ? ClipOval(
+                                  child: Image.network(
+                                    _photoUrl!,
+                                    width: 100,
+                                    height: 100,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => Icon(
+                                      Icons.person,
+                                      size: 50,
+                                      color: Colors.grey[400],
+                                    ),
+                                  ),
+                                )
+                              : Icon(
                                   Icons.person,
                                   size: 50,
                                   color: Colors.grey[400],
-                                )
-                              : null,
+                                ),
                         ),
                       ),
                       Positioned(
@@ -553,24 +565,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: CircleAvatar(
                           radius: 35,
                           backgroundColor: Colors.grey[200],
-                          backgroundImage:
-                              (_partnerProfile!['photo_url'] != null &&
-                                  _partnerProfile!['photo_url']
-                                      .toString()
-                                      .isNotEmpty)
-                              ? NetworkImage(_partnerProfile!['photo_url'])
-                              : null,
-                          child:
-                              (_partnerProfile!['photo_url'] == null ||
-                                  _partnerProfile!['photo_url']
-                                      .toString()
-                                      .isEmpty)
-                              ? Icon(
+                          child: (_partnerProfile!['photo_url'] != null &&
+                                  _partnerProfile!['photo_url'].toString().isNotEmpty)
+                              ? ClipOval(
+                                  child: Image.network(
+                                    _partnerProfile!['photo_url'],
+                                    width: 70,
+                                    height: 70,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => Icon(
+                                      Icons.person,
+                                      size: 35,
+                                      color: Colors.grey[400],
+                                    ),
+                                  ),
+                                )
+                              : Icon(
                                   Icons.person,
                                   size: 35,
                                   color: Colors.grey[400],
-                                )
-                              : null,
+                                ),
                         ),
                       ),
                     ),

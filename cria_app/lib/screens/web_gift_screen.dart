@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cria_app/validators/checkout_form_validator.dart';
 import 'package:cria_app/services/payment_service.dart';
 import 'package:cria_app/screens/pix_payment_screen.dart';
 
@@ -9,11 +8,11 @@ class WebGiftScreen extends StatefulWidget {
   final List<Map<String, dynamic>> selectedItems;
 
   const WebGiftScreen({
-    Key? key,
+    super.key,
     required this.paymentService,
     required this.familyId,
     required this.selectedItems,
-  }) : super(key: key);
+  });
 
   @override
   State<WebGiftScreen> createState() => _WebGiftScreenState();
@@ -21,10 +20,11 @@ class WebGiftScreen extends StatefulWidget {
 
 class _WebGiftScreenState extends State<WebGiftScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   final _nameController = TextEditingController();
   final _nicknameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _emailController = TextEditingController(); // <--- NOVO CONTROLLER
   final _messageController = TextEditingController();
 
   bool _isLoading = false;
@@ -34,32 +34,30 @@ class _WebGiftScreenState extends State<WebGiftScreen> {
     _nameController.dispose();
     _nicknameController.dispose();
     _phoneController.dispose();
+    _emailController.dispose(); // <--- DISPOSE DO NOVO CONTROLLER
     _messageController.dispose();
     super.dispose();
   }
 
   Future<void> _handleSubmit() async {
-    print('Iniciando novo fluxo de checkout transparente...');
-    if (!_formKey.currentState!.validate()) {
-      return; // Se tiver erro de validação, para por aqui
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      // Task 10.2: Chama o PaymentService com os dados do formulário
       final result = await widget.paymentService.createCheckout(
         items: widget.selectedItems,
         familyId: widget.familyId,
         giverName: _nameController.text.trim(),
         giverNickname: _nicknameController.text.trim(),
         giverPhone: _phoneController.text.trim(),
+        giverEmail: _emailController.text
+            .trim(), // <--- ATENÇÃO AQUI: giverEmail (sem underscore)
         messageToParents: _messageController.text.trim(),
       );
 
       if (!mounted) return;
 
-      // Navega para a tela do PIX passando os dados retornados
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => PixPaymentScreen(
@@ -80,9 +78,7 @@ class _WebGiftScreenState extends State<WebGiftScreen> {
         ),
       );
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -102,7 +98,7 @@ class _WebGiftScreenState extends State<WebGiftScreen> {
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
-              
+
               // Campo Nome
               TextFormField(
                 controller: _nameController,
@@ -110,17 +106,26 @@ class _WebGiftScreenState extends State<WebGiftScreen> {
                   labelText: 'Seu Nome Completo *',
                   border: OutlineInputBorder(),
                 ),
-                validator: CheckoutFormValidator.validateName,
+                validator: (val) =>
+                    val == null || val.isEmpty ? 'Campo obrigatório' : null,
               ),
               const SizedBox(height: 16),
 
-              // Campo Apelido (Opcional)
+              // Campo E-mail (NOVO)
               TextFormField(
-                controller: _nicknameController,
+                controller: _emailController,
                 decoration: const InputDecoration(
-                  labelText: 'Apelido (Opcional)',
+                  labelText: 'E-mail *',
                   border: OutlineInputBorder(),
+                  hintText: 'Para receber o comprovante',
                 ),
+                keyboardType: TextInputType.emailAddress,
+                validator: (val) {
+                  if (val == null || val.isEmpty) return 'Campo obrigatório';
+                  if (!val.contains('@') || !val.contains('.'))
+                    return 'Digite um e-mail válido';
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
 
@@ -133,7 +138,8 @@ class _WebGiftScreenState extends State<WebGiftScreen> {
                   hintText: 'Ex: 11987654321',
                 ),
                 keyboardType: TextInputType.phone,
-                validator: CheckoutFormValidator.validatePhone,
+                validator: (val) =>
+                    val == null || val.length < 10 ? 'Telefone inválido' : null,
               ),
               const SizedBox(height: 16),
 
@@ -145,7 +151,6 @@ class _WebGiftScreenState extends State<WebGiftScreen> {
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
-                validator: CheckoutFormValidator.validateMessage,
               ),
               const SizedBox(height: 32),
 
@@ -162,9 +167,15 @@ class _WebGiftScreenState extends State<WebGiftScreen> {
                       ? const SizedBox(
                           height: 24,
                           width: 24,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
                         )
-                      : const Text('Gerar PIX', style: TextStyle(fontSize: 18, color: Colors.white)),
+                      : const Text(
+                          'Gerar PIX',
+                          style: TextStyle(fontSize: 18, color: Colors.white),
+                        ),
                 ),
               ),
             ],

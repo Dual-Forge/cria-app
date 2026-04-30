@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'home_screen.dart';
 import 'shopping_list_screen.dart'; // <--- O NOME CERTO É ESSE
 import 'diary_screen.dart';
-import 'gifts_management_screen.dart';
+import 'timeline_screen.dart';
 import 'settings_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -58,7 +59,10 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     return StreamBuilder<Map<String, dynamic>>(
@@ -69,22 +73,26 @@ class _MainScreenState extends State<MainScreen> {
         String? babyGender;
         DateTime? dumDate;
         String? familyCode;
+        String? babyPhotoUrl;
 
         if (snapshot.hasData && snapshot.data != null) {
           final data = snapshot.data!;
           babyName = data['baby_name'];
           babyGender = data['baby_gender'];
           familyCode = data['invite_code'];
+          babyPhotoUrl = data['baby_photo_url'];
+          
           if (data['dum_date'] != null) {
             dumDate = DateTime.parse(data['dum_date']);
           }
 
           if (babyGender == 'menino') {
             themeColor = const Color(0xFF64B5F6);
-          } else if (babyGender == 'menina')
+          } else if (babyGender == 'menina') {
             themeColor = const Color(0xFFF06292);
-          else
+          } else {
             themeColor = Colors.deepPurple.shade300;
+          }
         }
 
         final List<Widget> screens = [
@@ -92,6 +100,7 @@ class _MainScreenState extends State<MainScreen> {
             themeColor: themeColor,
             babyName: babyName,
             babyGender: babyGender,
+            babyPhotoUrl: babyPhotoUrl,
             dumDate: dumDate,
             familyCode: familyCode,
             familyId: _familyId,
@@ -101,67 +110,31 @@ class _MainScreenState extends State<MainScreen> {
           ShoppingListScreen(currentTheme: themeColor, familyId: _familyId),
 
           DiaryScreen(themeColor: themeColor, familyId: _familyId),
-          GiftsManagementScreen(currentTheme: themeColor, familyId: _familyId),
+          TimelineScreen(currentTheme: themeColor, familyId: _familyId),
           SettingsScreen(themeColor: themeColor),
         ];
 
         return Scaffold(
-          extendBody:
-              false, // Fixed: set to false to ensure content is not hidden behind nav bar
+          backgroundColor: Colors.transparent,
+          extendBody: true,
           body: IndexedStack(index: _currentIndex, children: screens),
-          bottomNavigationBar: NavigationBarTheme(
-            data: NavigationBarThemeData(
-              labelTextStyle: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: themeColor,
-                  );
-                }
-                return TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.normal,
-                  color: Colors.grey[600],
-                );
-              }),
-            ),
-            child: NavigationBar(
-              selectedIndex: _currentIndex,
-              onDestinationSelected: (index) =>
-                  setState(() => _currentIndex = index),
-              indicatorColor: themeColor.withValues(alpha: 0.2),
-              backgroundColor: Colors.white,
-              elevation: 4,
-              shadowColor: Colors.black.withValues(alpha: 0.2),
-              destinations: [
-                NavigationDestination(
-                  icon: const Icon(Icons.favorite_border),
-                  selectedIcon: Icon(Icons.favorite, color: themeColor),
-                  label: 'Gravidez',
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.shopping_bag_outlined),
-                  selectedIcon: Icon(Icons.shopping_bag, color: themeColor),
-                  label: 'Enxoval',
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.book_outlined),
-                  selectedIcon: Icon(Icons.book, color: themeColor),
-                  label: 'Diário',
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.card_giftcard_outlined),
-                  selectedIcon: Icon(Icons.card_giftcard, color: themeColor),
-                  label: 'Presentes',
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.settings_outlined),
-                  selectedIcon: Icon(Icons.settings, color: themeColor),
-                  label: 'Ajustes',
-                ),
-              ],
-            ),
+          bottomNavigationBar: CurvedNavigationBar(
+            index: _currentIndex,
+            backgroundColor: Colors.transparent,
+            color: Colors.white,
+            buttonBackgroundColor: Colors.white,
+            animationCurve: Curves.easeInOut,
+            animationDuration: const Duration(milliseconds: 300),
+            onTap: (index) {
+              setState(() => _currentIndex = index);
+            },
+            items: [
+              Icon(Icons.favorite, color: _currentIndex == 0 ? themeColor : Colors.grey[600]),
+              Icon(Icons.shopping_bag, color: _currentIndex == 1 ? themeColor : Colors.grey[600]),
+              Icon(Icons.book, color: _currentIndex == 2 ? themeColor : Colors.grey[600]),
+              Icon(Icons.photo_library, color: _currentIndex == 3 ? themeColor : Colors.grey[600]),
+              Icon(Icons.settings, color: _currentIndex == 4 ? themeColor : Colors.grey[600]),
+            ],
           ),
         );
       },

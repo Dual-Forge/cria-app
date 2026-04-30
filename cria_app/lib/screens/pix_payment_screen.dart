@@ -12,13 +12,13 @@ class PixPaymentScreen extends StatefulWidget {
   final PaymentService paymentService;
 
   const PixPaymentScreen({
-    Key? key,
+    super.key,
     required this.paymentId,
     required this.qrCode,
     required this.qrCodeBase64,
     required this.familyId,
     required this.paymentService,
-  }) : super(key: key);
+  });
 
   @override
   State<PixPaymentScreen> createState() => _PixPaymentScreenState();
@@ -62,8 +62,10 @@ class _PixPaymentScreenState extends State<PixPaymentScreen> {
       if (!_isPolling) return;
 
       try {
-        final result = await widget.paymentService.checkPaymentStatus(widget.paymentId);
-        
+        final result = await widget.paymentService.checkPaymentStatus(
+          widget.paymentId,
+        );
+
         if (result['status'] == 'approved') {
           _handleSuccess();
         }
@@ -78,7 +80,7 @@ class _PixPaymentScreenState extends State<PixPaymentScreen> {
     _isPolling = false;
     _countdownTimer?.cancel();
     _pollingTimer?.cancel();
-    
+
     if (mounted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const SuccessPlaceholderScreen()),
@@ -117,10 +119,7 @@ class _PixPaymentScreenState extends State<PixPaymentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pagamento PIX'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Pagamento PIX'), centerTitle: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -132,7 +131,7 @@ class _PixPaymentScreenState extends State<PixPaymentScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            
+
             // Task 8.2: Exibir QR Code
             Container(
               padding: const EdgeInsets.all(16),
@@ -144,7 +143,7 @@ class _PixPaymentScreenState extends State<PixPaymentScreen> {
                     color: Colors.black.withOpacity(0.1),
                     blurRadius: 10,
                     offset: const Offset(0, 5),
-                  )
+                  ),
                 ],
               ),
               child: QrImageView(
@@ -160,7 +159,7 @@ class _PixPaymentScreenState extends State<PixPaymentScreen> {
             Text(
               'Expira em: $_formattedTime',
               style: const TextStyle(
-                fontSize: 24, 
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Colors.redAccent,
               ),
@@ -189,7 +188,7 @@ class _PixPaymentScreenState extends State<PixPaymentScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            
+
             const CircularProgressIndicator(),
             const SizedBox(height: 16),
             const Text(
@@ -207,21 +206,28 @@ class _PixPaymentScreenState extends State<PixPaymentScreen> {
 // PLACEHOLDERS (Pode substituir depois pelas telas reais)
 // ==========================================
 class SuccessPlaceholderScreen extends StatelessWidget {
-  const SuccessPlaceholderScreen({Key? key}) : super(key: key);
+  const SuccessPlaceholderScreen({super.key});
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(child: Text('Pagamento Aprovado! 🎉', style: TextStyle(fontSize: 24))),
+      body: Center(
+        child: Text('Pagamento Aprovado! 🎉', style: TextStyle(fontSize: 24)),
+      ),
     );
   }
 }
 
 class TimeoutPlaceholderScreen extends StatelessWidget {
-  const TimeoutPlaceholderScreen({Key? key}) : super(key: key);
+  const TimeoutPlaceholderScreen({super.key});
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(child: Text('O tempo do PIX expirou. ⌛', style: TextStyle(fontSize: 24))),
+      body: Center(
+        child: Text(
+          'O tempo do PIX expirou. ⌛',
+          style: TextStyle(fontSize: 24),
+        ),
+      ),
     );
   }
 }

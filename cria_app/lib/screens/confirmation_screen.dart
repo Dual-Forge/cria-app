@@ -5,10 +5,10 @@ class ConfirmationScreen extends StatelessWidget {
   final VoidCallback? onReturnHome;
 
   const ConfirmationScreen({
-    Key? key,
+    super.key,
     required this.babyName,
     this.onReturnHome,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,13 +22,9 @@ class ConfirmationScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Ícone de Sucesso
-              const Icon(
-                Icons.check_circle,
-                color: Colors.green,
-                size: 100,
-              ),
+              const Icon(Icons.check_circle, color: Colors.green, size: 100),
               const SizedBox(height: 32),
-              
+
               // Título
               const Text(
                 'Pagamento Aprovado! 🎉',
@@ -40,7 +36,7 @@ class ConfirmationScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-              
+
               // Mensagem personalizada com o nome do bebê
               Text(
                 'Muito obrigado pelo presente!\n$babyName vai adorar!',
@@ -52,7 +48,7 @@ class ConfirmationScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 48),
-              
+
               // Botão de retorno
               SizedBox(
                 width: double.infinity,
@@ -67,7 +63,8 @@ class ConfirmationScreen extends StatelessWidget {
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueAccent, // Pode ajustar para a cor tema do seu app
+                    backgroundColor: Colors
+                        .blueAccent, // Pode ajustar para a cor tema do seu app
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -75,9 +72,9 @@ class ConfirmationScreen extends StatelessWidget {
                   child: const Text(
                     'Voltar para lista de presentes',
                     style: TextStyle(
-                      fontSize: 16, 
-                      fontWeight: FontWeight.bold, 
-                      color: Colors.white
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
                 ),

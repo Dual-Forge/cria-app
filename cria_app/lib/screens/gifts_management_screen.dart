@@ -84,12 +84,14 @@ class _GiftsManagementScreenState extends State<GiftsManagementScreen> {
 
   Future<void> _sendThankYou(Map<String, dynamic> gift) async {
     // 1. Define o nome ou apelido (Requisito 7.2)
-    final giverNameOrNickname = gift['giver_nickname']?.toString().isNotEmpty == true 
-        ? gift['giver_nickname'] 
+    final giverNameOrNickname =
+        gift['giver_nickname']?.toString().isNotEmpty == true
+        ? gift['giver_nickname']
         : (gift['giver_name'] ?? 'Padrinho/Madrinha');
 
     // 2. Limpa o telefone e garante o prefixo 55 apenas se necessário
-    String rawPhone = gift['giver_phone']?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '';
+    String rawPhone =
+        gift['giver_phone']?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '';
     if (rawPhone.isNotEmpty && !rawPhone.startsWith('55')) {
       rawPhone = '55$rawPhone';
     }
@@ -97,7 +99,9 @@ class _GiftsManagementScreenState extends State<GiftsManagementScreen> {
     if (rawPhone.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Telefone não disponível para este doador.')),
+          const SnackBar(
+            content: Text('Telefone não disponível para este doador.'),
+          ),
         );
       }
       return;
@@ -116,7 +120,8 @@ class _GiftsManagementScreenState extends State<GiftsManagementScreen> {
         final currentUserId = Supabase.instance.client.auth.currentUser?.id;
         final currentThankedBy = List<String>.from(gift['thanked_by'] ?? []);
 
-        if (currentUserId != null && !currentThankedBy.contains(currentUserId)) {
+        if (currentUserId != null &&
+            !currentThankedBy.contains(currentUserId)) {
           currentThankedBy.add(currentUserId);
           await Supabase.instance.client
               .from('gift_contributions')
@@ -146,7 +151,7 @@ class _GiftsManagementScreenState extends State<GiftsManagementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('Mural de Presentes'),
         backgroundColor: widget.currentTheme,
