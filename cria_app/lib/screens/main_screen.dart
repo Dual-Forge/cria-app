@@ -5,6 +5,7 @@ import 'home_screen.dart';
 import 'shopping_list_screen.dart'; // <--- O NOME CERTO É ESSE
 import 'diary_screen.dart';
 import 'timeline_screen.dart';
+import 'appointments_screen.dart';
 import 'settings_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -59,10 +60,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return StreamBuilder<Map<String, dynamic>>(
@@ -81,7 +79,7 @@ class _MainScreenState extends State<MainScreen> {
           babyGender = data['baby_gender'];
           familyCode = data['invite_code'];
           babyPhotoUrl = data['baby_photo_url'];
-          
+
           if (data['dum_date'] != null) {
             dumDate = DateTime.parse(data['dum_date']);
           }
@@ -105,10 +103,8 @@ class _MainScreenState extends State<MainScreen> {
             familyCode: familyCode,
             familyId: _familyId,
           ),
-
-          // AQUI: USAMOS O SHOPPING LIST COM O ID DA FAMILIA
+          AppointmentsScreen(themeColor: themeColor, familyId: _familyId),
           ShoppingListScreen(currentTheme: themeColor, familyId: _familyId),
-
           DiaryScreen(themeColor: themeColor, familyId: _familyId),
           TimelineScreen(currentTheme: themeColor, familyId: _familyId),
           SettingsScreen(themeColor: themeColor),
@@ -116,7 +112,7 @@ class _MainScreenState extends State<MainScreen> {
 
         return Scaffold(
           backgroundColor: Colors.transparent,
-          extendBody: true,
+          extendBody: false,
           body: IndexedStack(index: _currentIndex, children: screens),
           bottomNavigationBar: CurvedNavigationBar(
             index: _currentIndex,
@@ -130,10 +126,11 @@ class _MainScreenState extends State<MainScreen> {
             },
             items: [
               Icon(Icons.favorite, color: _currentIndex == 0 ? themeColor : Colors.grey[600]),
-              Icon(Icons.shopping_bag, color: _currentIndex == 1 ? themeColor : Colors.grey[600]),
-              Icon(Icons.book, color: _currentIndex == 2 ? themeColor : Colors.grey[600]),
-              Icon(Icons.photo_library, color: _currentIndex == 3 ? themeColor : Colors.grey[600]),
-              Icon(Icons.settings, color: _currentIndex == 4 ? themeColor : Colors.grey[600]),
+              Icon(Icons.calendar_month, color: _currentIndex == 1 ? themeColor : Colors.grey[600]),
+              Icon(Icons.shopping_bag, color: _currentIndex == 2 ? themeColor : Colors.grey[600]),
+              Icon(Icons.book, color: _currentIndex == 3 ? themeColor : Colors.grey[600]),
+              Icon(Icons.photo_library, color: _currentIndex == 4 ? themeColor : Colors.grey[600]),
+              Icon(Icons.settings, color: _currentIndex == 5 ? themeColor : Colors.grey[600]),
             ],
           ),
         );

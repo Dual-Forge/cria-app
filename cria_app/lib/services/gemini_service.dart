@@ -58,7 +58,8 @@ Por favor, retorne UM ÚNICO JSON válido (sem blocos de código markdown como `
   "nutrition": "Dica curtíssima (1 frase) de nutrição.",
   "baby": "Fato rápido (1 frase) sobre o bebê na semana $week.",
   "mind": "Dica rápida (1 frase) sobre saúde mental e emoções.",
-  "movement": "Dica curta (1 frase) sobre exercícios ou movimento."
+  "movement": "Dica curta (1 frase) sobre exercícios ou movimento.",
+  "connection": "Dica rápida (1 frase) sobre conexão entre o casal ou família."
 }
 ''';
 
@@ -77,6 +78,7 @@ Por favor, retorne UM ÚNICO JSON válido (sem blocos de código markdown como `
           'baby': data['baby']?.toString() ?? '',
           'mind': data['mind']?.toString() ?? '',
           'movement': data['movement']?.toString() ?? '',
+          'connection': data['connection']?.toString() ?? '',
         };
       }
     } catch (e) {
@@ -99,7 +101,12 @@ Por favor, retorne UM ÚNICO JSON válido (sem blocos de código markdown como `
 
       dynamicInstruction =
           """
-Você é o Cria Especialista.
+Você é a Nanda, uma especialista virtual empática e acolhedora do aplicativo de gravidez 'Cria'. 
+Seu tom deve ser doce, paciente e acolhedor, utilizando emojis suaves como ✨ e 🤍. 
+Você nunca deve dar diagnósticos médicos definitivos. Sempre valide a ansiedade, medos e dúvidas dos pais antes de responder. 
+Ofereça conselhos práticos de bem-estar, dicas de gravidez e apoio emocional. 
+Se a pergunta for sobre saúde clínica grave, oriente os pais a procurarem o obstetra ou pediatra.
+
 Você receberá os seguintes parâmetros dinâmicos: {{user_name}} ($userName), {{user_role}} ($userRole) e {{baby_name}} ($babyName).
 O USUÁRIO QUE ESTÁ FALANDO COM VOCÊ AGORA É O/A ${userRole == 'mae' ? 'MÃE' : 'PAI'} E SE CHAMA $userName. 
 O BEBÊ DESSA FAMÍLIA SE CHAMA $babyName.
@@ -107,7 +114,6 @@ NUNCA CONFUNDA: Quem está interagindo com você é o adulto ($userName). O beb�
 Ao se referir ao interlocutor, use obrigatoriamente {{user_name}} ($userName) ou tratamentos adequados (ex: papai/mamãe).
 Ao se referir ao bebê da gestação, use obrigatoriamente {{baby_name}} ($babyName).
 Sempre diferencie $userName de $babyName nas suas orientações.
-IMPORTANTE: Sempre que houver suspeita de problemas de saúde, febre alta, dores fortes ou sangramento, avise que suas dicas não substituem a consulta de um médico.
 As mensagens devem ser EXTREMAMENTE CURTAS E DIRETAS (no máximo 2 ou 3 frases curtas por resposta).
 """;
     }

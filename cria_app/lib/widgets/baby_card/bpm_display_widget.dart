@@ -191,46 +191,50 @@ class _BPMDisplayWidgetState extends State<BPMDisplayWidget>
 
   @override
   Widget build(BuildContext context) {
-    final bpm = widget.lastBpm;
+    final bpm = widget.lastBpm ?? 140;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         // BPM Display
-        if (bpm != null)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              AnimatedBuilder(
-                animation: _heartScale,
-                builder: (context, child) {
-                  return Transform.scale(
-                    scale: _heartScale.value,
-                    child: Icon(Icons.favorite, color: Colors.red, size: 24),
-                  );
-                },
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedBuilder(
+              animation: _heartScale,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _heartScale.value,
+                  child: Icon(Icons.favorite, color: Colors.red, size: 24),
+                );
+              },
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '$bpm BPM',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: widget.themeColor,
               ),
-              const SizedBox(width: 8),
-              Text(
-                '$bpm BPM',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: widget.themeColor,
+            ),
+            if (widget.lastBpm == null)
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: Text(
+                  '(Exemplo)',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[500],
+                  ),
                 ),
               ),
-            ],
-          )
-        else
-          Text(
-            'BPM não disponível',
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-          ),
+          ],
+        ),
         const SizedBox(height: 12),
 
         // Play Button
-        if (bpm != null)
-          ElevatedButton.icon(
+        ElevatedButton.icon(
             onPressed: _isPlaying ? _stopHeartbeat : _playHeartbeat,
             icon: Icon(
               _isPlaying ? Icons.stop : Icons.play_arrow,
@@ -415,11 +419,7 @@ class _BPMDisplayCompactWidgetState extends State<BPMDisplayCompactWidget>
 
   @override
   Widget build(BuildContext context) {
-    final bpm = widget.lastBpm;
-
-    if (bpm == null) {
-      return const SizedBox.shrink();
-    }
+    final bpm = widget.lastBpm ?? 140;
 
     return GestureDetector(
       onTap: _isPlaying ? _stopHeartbeat : _playHeartbeat,

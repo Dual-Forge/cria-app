@@ -335,11 +335,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     width: 100,
                                     height: 100,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) => Icon(
-                                      Icons.person,
-                                      size: 50,
-                                      color: Colors.grey[400],
-                                    ),
+                                    errorBuilder:
+                                        (context, error, stackTrace) => Icon(
+                                          Icons.person,
+                                          size: 50,
+                                          color: Colors.grey[400],
+                                        ),
                                   ),
                                 )
                               : Icon(
@@ -565,19 +566,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: CircleAvatar(
                           radius: 35,
                           backgroundColor: Colors.grey[200],
-                          child: (_partnerProfile!['photo_url'] != null &&
-                                  _partnerProfile!['photo_url'].toString().isNotEmpty)
+                          child:
+                              (_partnerProfile!['photo_url'] != null &&
+                                  _partnerProfile!['photo_url']
+                                      .toString()
+                                      .isNotEmpty)
                               ? ClipOval(
                                   child: Image.network(
                                     _partnerProfile!['photo_url'],
                                     width: 70,
                                     height: 70,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) => Icon(
-                                      Icons.person,
-                                      size: 35,
-                                      color: Colors.grey[400],
-                                    ),
+                                    errorBuilder:
+                                        (context, error, stackTrace) => Icon(
+                                          Icons.person,
+                                          size: 35,
+                                          color: Colors.grey[400],
+                                        ),
                                   ),
                                 )
                               : Icon(
@@ -706,7 +711,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         subtitle: Text(
-                          "app-cria.vercel.app/presentes/$_familyId",
+                          "https://www.amazon.com.br/hz/wishlist/ls/1FT6FPTWGMO5F?ref_=wl_share",
                           style: TextStyle(
                             fontSize: 13,
                             color: Colors.grey[700],

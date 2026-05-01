@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(find C:/Users/jeatk/OneDrive/Documents/GitHub/cria/cria_app -name *_test.dart -type f)",
+      "Bash(flutter test:*)",
+      "Bash(tee /tmp/test_full.txt)",
+      "Bash(cat C:/Users/jeatk/OneDrive/Documents/GitHub/cria/supabase/migrations/*.sql)",
+      "Bash(find C:/Users/jeatk/OneDrive/Documents/GitHub/cria -name *.sql -type f)"
+    ]
+  }
+}

@@ -52,6 +52,11 @@ class PregnancyAIService {
           content: "O coração já bate forte e rápido!",
           iconEmoji: "❤️",
         ),
+        PregnancyTip(
+          category: "Conexão",
+          content: "Vocês estão criando um laço invisível e eterno.",
+          iconEmoji: "🤍",
+        ),
       ];
     } else if (week < 20) {
       return [
@@ -79,6 +84,11 @@ class PregnancyAIService {
           category: "Bebê",
           content: "As digitais dos dedinhos estão se formando.",
           iconEmoji: "👆",
+        ),
+        PregnancyTip(
+          category: "Conexão",
+          content: "Reservem um momento a dois para celebrar a vida.",
+          iconEmoji: "🤍",
         ),
       ];
     } else if (week < 28) {
@@ -108,6 +118,11 @@ class PregnancyAIService {
           content: "Ele já consegue ouvir sua voz!",
           iconEmoji: "👂",
         ),
+        PregnancyTip(
+          category: "Conexão",
+          content: "Leiam uma história juntos para o bebê.",
+          iconEmoji: "🤍",
+        ),
       ];
     } else {
       return [
@@ -135,6 +150,11 @@ class PregnancyAIService {
           category: "Bebê",
           content: "Ganhando peso e se preparando para nascer.",
           iconEmoji: "👶",
+        ),
+        PregnancyTip(
+          category: "Conexão",
+          content: "Conversem sobre os medos e expectativas, vocês são uma equipe.",
+          iconEmoji: "🤍",
         ),
       ];
     }

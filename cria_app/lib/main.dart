@@ -4,12 +4,14 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_strategy/url_strategy.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:cria_app/screens/auth_flow_screens.dart';
 import 'package:cria_app/screens/web_gift_screen.dart';
 import 'package:cria_app/services/payment_service.dart';
 import 'package:cria_app/widgets/app_background.dart';
+import 'package:cria_app/screens/baby_details_screen.dart';
 
 // IMPORTANTE: Importamos a nova vitrine pública!
 import 'package:cria_app/screens/public_registry_screen.dart';
@@ -46,6 +48,24 @@ class CriaApp extends StatelessWidget {
         },
       ),
 
+      // Baby Details Route
+      GoRoute(
+        path: '/baby-details',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return BabyDetailsScreen(
+            profilePhotoUrl: extra['profilePhotoUrl'],
+            lastBpm: extra['lastBpm'],
+            expectedDueDate: extra['expectedDueDate'],
+            dumDate: extra['dumDate'],
+            kickCount: extra['kickCount'] ?? 0,
+            babyName: extra['babyName'] ?? 'Bebê',
+            familyId: extra['familyId'] ?? '',
+            themeColor: extra['themeColor'] ?? Colors.pink,
+          );
+        },
+      ),
+
       // 2. ROTA DE PAGAMENTO (Checkout) - Oculta, acessada após escolher o presente
       GoRoute(
         path: '/checkout/:id',
@@ -79,6 +99,17 @@ class CriaApp extends StatelessWidget {
       builder: (context, child) => GlobalBackgroundWrapper(child: child),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple),
+        textTheme: GoogleFonts.nunitoTextTheme().copyWith(
+          displayLarge: GoogleFonts.quicksand(),
+          displayMedium: GoogleFonts.quicksand(),
+          displaySmall: GoogleFonts.quicksand(),
+          headlineLarge: GoogleFonts.quicksand(),
+          headlineMedium: GoogleFonts.quicksand(),
+          headlineSmall: GoogleFonts.quicksand(),
+          titleLarge: GoogleFonts.quicksand(),
+          titleMedium: GoogleFonts.quicksand(),
+          titleSmall: GoogleFonts.quicksand(),
+        ),
         useMaterial3: true,
       ),
       localizationsDelegates: const [

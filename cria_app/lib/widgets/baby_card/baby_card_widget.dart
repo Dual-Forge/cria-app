@@ -1,9 +1,51 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'profile_photo_widget.dart';
 import 'bpm_display_widget.dart';
 import 'zodiac_badge_widget.dart';
 import 'trimestre_progress_bar.dart';
 import 'kick_counter_button.dart';
+import '../../utils/baby_data.dart';
+
+class SizeAndWeightDisplayWidget extends StatelessWidget {
+  final DateTime? dumDate;
+  final Color themeColor;
+
+  const SizeAndWeightDisplayWidget({super.key, this.dumDate, required this.themeColor});
+
+  @override
+  Widget build(BuildContext context) {
+    if (dumDate == null) return const SizedBox.shrink();
+    
+    final diff = DateTime.now().difference(dumDate!);
+    int weeks = (diff.inDays / 7).floor();
+    if (weeks < 0) weeks = 0;
+    
+    final babyData = BabyData.getData(weeks);
+    final size = babyData['size'] ?? '-';
+    final weight = babyData['weight'] ?? '-';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: themeColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.straighten, size: 14, color: themeColor),
+          const SizedBox(width: 4),
+          Text(size, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: themeColor)),
+          const SizedBox(width: 12),
+          Icon(Icons.scale, size: 14, color: themeColor),
+          const SizedBox(width: 4),
+          Text(weight, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: themeColor)),
+        ],
+      ),
+    );
+  }
+}
 
 /// BabyCardWidget
 /// 
@@ -77,104 +119,119 @@ class BabyCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: themeColor.withOpacity(0.1),
-            blurRadius: 20,
-            spreadRadius: 5,
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header: Foto + BPM + Zodíaco
-            _buildHeader(),
+    int weeks = 0;
+    if (dumDate != null) {
+      final diff = DateTime.now().difference(dumDate!);
+      weeks = (diff.inDays / 7).floor();
+      if (weeks < 0) weeks = 0;
+    }
 
-            const SizedBox(height: 20),
-
-            // Progresso do Trimestre
-            if (showTrimestreProgress) ...[
-              TrimestreProgressBar(
-                dumDate: dumDate,
-                themeColor: themeColor,
-                showPercentage: true,
-                showTrimestreName: true,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          context.push('/baby-details', extra: {
+            'profilePhotoUrl': profilePhotoUrl,
+            'lastBpm': lastBpm,
+            'expectedDueDate': expectedDueDate,
+            'dumDate': dumDate,
+            'kickCount': kickCount,
+            'babyName': babyName,
+            'familyId': familyId,
+            'themeColor': themeColor,
+          });
+        },
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: themeColor.withOpacity(0.08),
+                blurRadius: 20,
+                spreadRadius: 2,
               ),
-              const SizedBox(height: 20),
             ],
-
-            // Contador de Chutes
-            if (showKickCounter)
-              KickCounterButton(
-                kickCount: kickCount,
-                babyName: babyName,
-                familyId: familyId,
-                themeColor: themeColor,
-                onKickCountUpdated: onKickCountUpdated,
-                onError: onError,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Constrói o header com foto, BPM e zodíaco
-  Widget _buildHeader() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Foto de perfil
-        ProfilePhotoWidget(
-          photoUrl: profilePhotoUrl,
-          themeColor: themeColor,
-          size: photoSize,
-        ),
-
-        const SizedBox(width: 16),
-
-        // Coluna com BPM e Zodíaco
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Nome do bebê
-              Text(
-                babyName,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              // Foto Redonda
+              ProfilePhotoWidget(
+                photoUrl: profilePhotoUrl,
+                themeColor: themeColor,
+                size: 80,
+              ),
+              const SizedBox(width: 16),
+              
+              // Coluna de Informações
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      babyName,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2D3142),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Semana $weeks',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    // Signo e Registro de Chute
+                    Row(
+                      children: [
+                        if (showZodiac)
+                          ZodiacBadgeWidget(
+                            expectedDueDate: expectedDueDate,
+                            themeColor: themeColor,
+                            emojiSize: 14,
+                            textSize: 12,
+                          ),
+                        const SizedBox(width: 8),
+                        KickCounterCompactButton(
+                          kickCount: kickCount,
+                          babyName: babyName,
+                          familyId: familyId,
+                          themeColor: themeColor,
+                          onKickCountUpdated: onKickCountUpdated,
+                        ),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 8),
+                    // Peso e Tamanho
+                    SizeAndWeightDisplayWidget(
+                      dumDate: dumDate,
+                      themeColor: themeColor,
+                    ),
+                  ],
                 ),
               ),
-
-              const SizedBox(height: 12),
-
-              // BPM
-              if (showBpm)
-                BPMDisplayCompactWidget(
-                  lastBpm: lastBpm,
-                  themeColor: themeColor,
-                ),
-
-              const SizedBox(height: 12),
-
-              // Zodíaco
-              if (showZodiac)
-                ZodiacBadgeWidget(
-                  expectedDueDate: expectedDueDate,
-                  themeColor: themeColor,
-                ),
+              
+              // Seta Indicadora
+              Icon(
+                Icons.chevron_right,
+                color: Colors.grey[400],
+                size: 32,
+              ),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
 }

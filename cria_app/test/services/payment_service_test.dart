@@ -40,6 +40,8 @@ void main() {
         familyId: 'fam_123',
         giverName: 'Jean',
         giverPhone: '11987654321',
+        giverNickname: 'Jean',
+        giverEmail: 'jean@test.com',
       );
 
       expect(result['payment_id'], 12345);
@@ -64,6 +66,8 @@ void main() {
           familyId: 'fam_123',
           giverName: 'Jean',
           giverPhone: '11987654321',
+          giverNickname: 'Jean',
+          giverEmail: 'jean@test.com',
         ),
         throwsA(isA<Exception>().having(
           (e) => e.toString(), 

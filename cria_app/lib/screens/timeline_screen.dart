@@ -1,10 +1,12 @@
-// import 'dart:io'; // Removido para compatibilidade Web
+import 'dart:io' as io;
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:video_player/video_player.dart';
 import 'package:intl/intl.dart';
-import 'package:google_fonts/google_fonts.dart';
+// import 'package:google_fonts/google_fonts.dart';
 import '../widgets/app_background.dart';
 
 class TimelineScreen extends StatefulWidget {
@@ -64,18 +66,80 @@ class _TimelineScreenState extends State<TimelineScreen> {
     }
   }
 
-  Future<void> _addPhoto() async {
+  Future<void> _addMedia() async {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo, color: Colors.deepPurple),
+                title: const Text("Adicionar Foto"),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickMedia(false);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.videocam, color: Colors.deepPurple),
+                title: const Text("Adicionar Vídeo"),
+                subtitle: const Text("Máximo de 1 minuto"),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickMedia(true);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickMedia(bool isVideo) async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    final pickedFile = isVideo
+        ? await picker.pickVideo(source: ImageSource.gallery)
+        : await picker.pickImage(source: ImageSource.gallery);
 
     if (pickedFile == null || !mounted) return;
 
-    // Exibir modal para coletar titulo, descricao, idade e data
+    if (isVideo) {
+      VideoPlayerController controller;
+      if (kIsWeb) {
+        controller = VideoPlayerController.networkUrl(Uri.parse(pickedFile.path));
+      } else {
+        controller = VideoPlayerController.file(io.File(pickedFile.path));
+      }
+      await controller.initialize();
+      final duration = controller.value.duration;
+      await controller.dispose();
+
+      if (duration.inSeconds > 60) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('O vídeo deve ter no máximo 1 minuto de duração.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+    }
+
     final bytes = await pickedFile.readAsBytes();
-    _showAddPhotoModal(pickedFile, bytes);
+    _showAddMediaModal(pickedFile, bytes, isVideo);
   }
 
-  void _showAddPhotoModal(XFile imageFile, Uint8List imageBytes) {
+  void _showAddMediaModal(XFile file, Uint8List mediaBytes, bool isVideo) {
     final titleController = TextEditingController();
     final descController = TextEditingController();
     final ageController = TextEditingController();
@@ -105,22 +169,39 @@ class _TimelineScreenState extends State<TimelineScreen> {
                   children: [
                     Text(
                       "Nova Memória",
-                      style: GoogleFonts.nunito(
+                      style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                         color: Colors.deepPurple,
                       ),
                     ),
                     const SizedBox(height: 20),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Image.memory(
-                        imageBytes,
+                    if (isVideo)
+                      Container(
                         height: 150,
                         width: double.infinity,
-                        fit: BoxFit.cover,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade900,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.play_circle_fill,
+                            color: Colors.white70,
+                            size: 64,
+                          ),
+                        ),
+                      )
+                    else
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.memory(
+                          mediaBytes,
+                          height: 150,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 16),
                     TextField(
                       controller: ageController,
@@ -197,12 +278,13 @@ class _TimelineScreenState extends State<TimelineScreen> {
                           }
                           Navigator.pop(context);
                           await _uploadMemory(
-                            imageFile,
-                            imageBytes,
+                            file,
+                            mediaBytes,
                             titleController.text,
                             descController.text,
                             ageController.text,
                             selectedDate,
+                            isVideo,
                           );
                         },
                         child: const Text(
@@ -223,34 +305,35 @@ class _TimelineScreenState extends State<TimelineScreen> {
 
   Future<void> _uploadMemory(
     XFile file,
-    Uint8List imageBytes,
+    Uint8List mediaBytes,
     String title,
     String desc,
     String ageText,
     DateTime date,
+    bool isVideo,
   ) async {
     setState(() => _isLoading = true);
     try {
-      // 1. Upload da imagem para o Storage (criando bucket timeline se nao existir)
+      final extension = isVideo ? 'mp4' : 'jpg';
+      final contentType = isVideo ? 'video/mp4' : 'image/jpeg';
       final fileName =
-          '${widget.familyId}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+          '${widget.familyId}/${DateTime.now().millisecondsSinceEpoch}.$extension';
 
-      // Assumindo que criaremos um bucket chamado 'timeline' ou usamos o 'avatars'
-      // Usaremos o storage existente (avatars) para simplificar se o timeline nao existir
       await _supabase.storage
           .from('avatars')
           .uploadBinary(
             fileName,
-            imageBytes,
-            fileOptions: const FileOptions(contentType: 'image/jpeg'),
+            mediaBytes,
+            fileOptions: FileOptions(contentType: contentType),
           );
 
-      final imageUrl = _supabase.storage.from('avatars').getPublicUrl(fileName);
+      final mediaUrl = _supabase.storage.from('avatars').getPublicUrl(fileName);
 
       // 2. Inserir no banco
       await _supabase.from('baby_timeline').insert({
         'family_id': widget.familyId,
-        'image_url': imageUrl,
+        'image_url': mediaUrl,
+        'media_type': isVideo ? 'video' : 'image',
         'title': title,
         'description': desc,
         'age_text': ageText,
@@ -357,7 +440,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
               Expanded(
                 child: Text(
                   "Apagar Lembrança?",
-                  style: GoogleFonts.nunito(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.deepPurple.shade900,
                   ),
@@ -367,7 +450,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
           ),
           content: Text(
             "Tem certeza que deseja apagar essa lembrança de ${_babyName}? Essa ação não pode ser desfeita.",
-            style: GoogleFonts.nunito(fontSize: 16),
+            style: const TextStyle(fontSize: 16),
           ),
           actions: [
             TextButton(
@@ -428,7 +511,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
                   children: [
                     Text(
                       "Editar Lembrança",
-                      style: GoogleFonts.nunito(
+                      style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: Colors.deepPurple.shade800,
@@ -445,18 +528,25 @@ class _TimelineScreenState extends State<TimelineScreen> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(20),
-                        child: Image.network(
-                          event['image_url'],
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Center(
-                                child: Icon(
-                                  Icons.broken_image,
-                                  color: Colors.grey,
-                                  size: 40,
+                        child: event['media_type'] == 'video'
+                            ? Container(
+                                color: Colors.black87,
+                                child: const Center(
+                                  child: Icon(Icons.videocam, color: Colors.white, size: 40),
                                 ),
+                              )
+                            : Image.network(
+                                event['image_url'],
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Center(
+                                      child: Icon(
+                                        Icons.broken_image,
+                                        color: Colors.grey,
+                                        size: 40,
+                                      ),
+                                    ),
                               ),
-                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -602,7 +692,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
           elevation: 0,
           title: Text(
             "Linha do Tempo de $_babyName",
-            style: GoogleFonts.nunito(
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: const Color(0xFF2D3142),
               fontWeight: FontWeight.bold,
             ),
@@ -678,22 +768,38 @@ class _TimelineScreenState extends State<TimelineScreen> {
                                         CircleAvatar(
                                           radius: 40,
                                           backgroundColor: Colors.grey.shade200,
-                                          child: ClipOval(
-                                            child: Image.network(
-                                              event['image_url'],
-                                              width: 80,
-                                              height: 80,
-                                              fit: BoxFit.cover,
-                                              errorBuilder:
-                                                  (
-                                                    context,
-                                                    error,
-                                                    stackTrace,
-                                                  ) => const Icon(
-                                                    Icons.person,
-                                                    size: 40,
-                                                    color: Colors.grey,
-                                                  ),
+                                          child: GestureDetector(
+                                            onTap: () {
+                                              if (event['media_type'] == 'video') {
+                                                _showVideoPlayerModal(context, event['image_url']);
+                                              }
+                                            },
+                                            child: ClipOval(
+                                              child: event['media_type'] == 'video'
+                                                  ? Container(
+                                                      color: Colors.black87,
+                                                      width: 80,
+                                                      height: 80,
+                                                      child: const Center(
+                                                        child: Icon(Icons.play_circle_fill, color: Colors.white70, size: 32),
+                                                      ),
+                                                    )
+                                                  : Image.network(
+                                                      event['image_url'],
+                                                      width: 80,
+                                                      height: 80,
+                                                      fit: BoxFit.cover,
+                                                      errorBuilder:
+                                                          (
+                                                            context,
+                                                            error,
+                                                            stackTrace,
+                                                          ) => const Icon(
+                                                            Icons.person,
+                                                            size: 40,
+                                                            color: Colors.grey,
+                                                          ),
+                                                    ),
                                             ),
                                           ),
                                         ),
@@ -736,7 +842,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
                                           Text(
                                             event['age_text'] ??
                                                 "Recém-nascido",
-                                            style: GoogleFonts.nunito(
+                                            style: TextStyle(
                                               fontSize: 18,
                                               fontWeight: FontWeight.w800,
                                               color: const Color(0xFF2D3142),
@@ -745,7 +851,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
                                           const SizedBox(height: 4),
                                           Text(
                                             formattedDate,
-                                            style: GoogleFonts.nunito(
+                                            style: TextStyle(
                                               fontSize: 13,
                                               color: Colors.grey.shade500,
                                             ),
@@ -753,7 +859,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
                                           const SizedBox(height: 8),
                                           Text(
                                             event['description'] ?? "",
-                                            style: GoogleFonts.nunito(
+                                            style: TextStyle(
                                               fontSize: 14,
                                               color: Colors.grey.shade700,
                                               height: 1.4,
@@ -864,13 +970,13 @@ class _TimelineScreenState extends State<TimelineScreen> {
                                   ),
                                   elevation: 2,
                                 ),
-                                onPressed: _addPhoto,
+                                onPressed: _addMedia,
                                 icon: const Icon(
                                   Icons.add,
                                   color: Colors.white,
                                 ),
                                 label: const Text(
-                                  "Adicionar Foto",
+                                  "Adicionar Memória",
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 16,
@@ -920,6 +1026,81 @@ class _TimelineScreenState extends State<TimelineScreen> {
               ),
       ),
     );
+  }
+  void _showVideoPlayerModal(BuildContext context, String url) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: VideoPlayerWidget(url: url),
+        ),
+      ),
+    );
+  }
+}
+
+class VideoPlayerWidget extends StatefulWidget {
+  final String url;
+  const VideoPlayerWidget({Key? key, required this.url}) : super(key: key);
+
+  @override
+  State<VideoPlayerWidget> createState() => _VideoPlayerWidgetState();
+}
+
+class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
+  late VideoPlayerController _controller;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
+      ..initialize().then((_) {
+        setState(() {
+          _isInitialized = true;
+        });
+        _controller.play();
+      })
+      ..setLooping(true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _isInitialized
+        ? AspectRatio(
+            aspectRatio: _controller.value.aspectRatio,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                VideoPlayer(_controller),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _controller.value.isPlaying ? _controller.pause() : _controller.play();
+                    });
+                  },
+                  child: Container(
+                    color: Colors.transparent,
+                    child: _controller.value.isPlaying
+                        ? const SizedBox.shrink()
+                        : const Icon(Icons.play_arrow, size: 64, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          )
+        : const SizedBox(
+            height: 200,
+            child: Center(child: CircularProgressIndicator(color: Colors.white)),
+          );
   }
 }
 
@@ -1046,28 +1227,39 @@ class _StoriesScreenState extends State<StoriesScreen>
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      Image.network(
-                        event['image_url'],
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return const Center(
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
+                      if (event['media_type'] == 'video')
+                        Container(
+                          color: Colors.black,
+                          child: Center(
+                            child: IgnorePointer(
+                              // Ignorar toques para permitir avançar/voltar o story
+                              child: VideoPlayerWidget(url: event['image_url']),
                             ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          color: Colors.grey[900],
-                          child: const Center(
-                            child: Icon(
-                              Icons.broken_image,
-                              color: Colors.white,
-                              size: 40,
+                          ),
+                        )
+                      else
+                        Image.network(
+                          event['image_url'],
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            color: Colors.grey[900],
+                            child: const Center(
+                              child: Icon(
+                                Icons.broken_image,
+                                color: Colors.white,
+                                size: 40,
+                              ),
                             ),
                           ),
                         ),
-                      ),
                       // Gradiente para melhorar legibilidade
                       Container(
                         decoration: BoxDecoration(
@@ -1151,12 +1343,20 @@ class _StoriesScreenState extends State<StoriesScreen>
               right: 10,
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundImage: NetworkImage(
-                      widget.events[_currentIndex]['image_url'],
+                  if (widget.events[_currentIndex]['media_type'] == 'video')
+                    const CircleAvatar(
+                      radius: 16,
+                      backgroundColor: Colors.deepPurple,
+                      child: Icon(Icons.videocam, color: Colors.white, size: 16),
+                    )
+                  else
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundImage: NetworkImage(
+                        widget.events[_currentIndex]['image_url'],
+                      ),
+                      onBackgroundImageError: (e, s) {},
                     ),
-                  ),
                   const SizedBox(width: 8),
                   Text(
                     widget.events[_currentIndex]['title'] ?? "Memória",

@@ -99,6 +99,14 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
       final mappedMsgs = List<Map<String, dynamic>>.from(data);
 
+      if (mappedMsgs.isEmpty) {
+        mappedMsgs.add({
+          'role': 'model',
+          'content': 'Olá! Sou a Nanda, a especialista virtual de vocês. Como posso ajudar a tranquilizar o dia de hoje? ✨🤍',
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      }
+
       // 3. Monta o histórico pro Gemini
       List<gemini.Content> history = [];
       for (var msg in mappedMsgs) {
@@ -222,16 +230,22 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
       appBar: AppBar(
         title: Row(
           children: [
-            const Icon(Icons.auto_awesome, color: Colors.amber),
-            const SizedBox(width: 8),
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: Colors.pinkAccent.withOpacity(0.1),
+              backgroundImage: const AssetImage('assets/images/nanda.png'),
+              onBackgroundImageError: (_, __) {},
+              child: const Icon(Icons.support_agent, size: 16, color: Colors.pinkAccent),
+            ),
+            const SizedBox(width: 10),
             const Text(
-              'Cria Especialista',
+              'Nanda',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ],
         ),
         backgroundColor: Colors.white,
-        foregroundColor: Colors.teal[800],
+        foregroundColor: Colors.pinkAccent.shade700,
         elevation: 1,
       ),
       body: Column(
@@ -243,14 +257,14 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             child: Row(
               children: [
                 Icon(
-                  Icons.health_and_safety,
+                  Icons.info_outline,
                   color: Colors.amber[800],
                   size: 20,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'As orientações da IA servem de apoio e NÃO substituem consulta e acompanhamento médico profissional.',
+                    '(ℹ️ A Nanda é uma IA de apoio e bem-estar. Sempre consulte seu obstetra para decisões médicas.)',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.amber[900],
@@ -282,7 +296,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Cria AI está digitando...',
+                  'Nanda está digitando...',
                   style: TextStyle(color: Colors.grey[500], fontSize: 12),
                 ),
               ),
@@ -328,7 +342,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                 ),
                 const SizedBox(width: 8),
                 CircleAvatar(
-                  backgroundColor: Colors.teal[600],
+                  backgroundColor: Colors.pinkAccent.shade700,
                   radius: 22,
                   child: IconButton(
                     icon: const Icon(Icons.send, color: Colors.white, size: 20),
@@ -353,7 +367,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           maxWidth: MediaQuery.of(context).size.width * 0.8,
         ),
         decoration: BoxDecoration(
-          color: isUser ? Colors.teal[600] : Colors.white,
+          color: isUser ? Colors.pinkAccent.shade700 : Colors.white,
           borderRadius: BorderRadius.circular(20).copyWith(
             bottomRight: isUser ? const Radius.circular(0) : null,
             bottomLeft: !isUser ? const Radius.circular(0) : null,
@@ -372,7 +386,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           // Tratar markdown simples removendo asteriscos por enquanto para design limpo
           text.replaceAll('**', ''),
           style: TextStyle(
-            color: isUser ? Colors.white : Colors.teal[900],
+            color: isUser ? Colors.white : const Color(0xFF2D3142),
             fontSize: 15,
           ),
         ),
