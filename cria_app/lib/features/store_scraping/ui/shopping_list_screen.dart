@@ -31,12 +31,32 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
   late Animation<double> _fadeAnimation;
 
   final List<Map<String, dynamic>> _categoriesConfig = [
-    {'name': 'Higiene', 'icon': Icons.bathtub, 'color': const Color(0xFF26C6DA)},
-    {'name': 'Roupas', 'icon': Icons.checkroom, 'color': const Color(0xFFFF8A65)},
+    {
+      'name': 'Higiene',
+      'icon': Icons.bathtub,
+      'color': const Color(0xFF26C6DA),
+    },
+    {
+      'name': 'Roupas',
+      'icon': Icons.checkroom,
+      'color': const Color(0xFFFF8A65),
+    },
     {'name': 'Quarto', 'icon': Icons.bed, 'color': const Color(0xFF5C6BC0)},
-    {'name': 'Passeio', 'icon': Icons.stroller, 'color': const Color(0xFF66BB6A)},
-    {'name': 'Alimentação', 'icon': Icons.restaurant, 'color': const Color(0xFFFFCA28)},
-    {'name': 'Mamãe', 'icon': Icons.pregnant_woman, 'color': const Color(0xFFEF5350)},
+    {
+      'name': 'Passeio',
+      'icon': Icons.stroller,
+      'color': const Color(0xFF66BB6A),
+    },
+    {
+      'name': 'Alimentação',
+      'icon': Icons.restaurant,
+      'color': const Color(0xFFFFCA28),
+    },
+    {
+      'name': 'Mamãe',
+      'icon': Icons.pregnant_woman,
+      'color': const Color(0xFFEF5350),
+    },
   ];
 
   final List<String> _ageFilters = [
@@ -271,17 +291,13 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Clicado"),
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
+                        _showFinancialModal(context, themeColor, allItemsRaw);
                       },
                       borderRadius: BorderRadius.circular(32),
                       child: Container(
                         padding: const EdgeInsets.only(
-                          top: 40, // Reduzi um pouco para compensar o padding do SingleChildScrollView
+                          top:
+                              40, // Reduzi um pouco para compensar o padding do SingleChildScrollView
                           bottom: 24,
                           left: 20,
                           right: 20,
@@ -304,7 +320,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         "Seu Enxoval",
@@ -317,7 +334,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                                       ),
                                       const SizedBox(height: 4),
                                       AnimatedSwitcher(
-                                        duration: const Duration(milliseconds: 300),
+                                        duration: const Duration(
+                                          milliseconds: 300,
+                                        ),
                                         child: Text(
                                           _selectedAgeFilter == 'Todos'
                                               ? "$boughtItems de $totalItems itens concluídos"
@@ -338,7 +357,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                                   radius: 42.0,
                                   lineWidth: 7.0,
                                   percent: itemsProgress.clamp(0.0, 1.0),
-                                  backgroundColor: themeColor.withValues(alpha: 0.1),
+                                  backgroundColor: themeColor.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   progressColor: themeColor,
                                   circularStrokeCap: CircularStrokeCap.round,
                                   animation: true,
@@ -374,7 +395,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                                       shape: BoxShape.circle,
                                       boxShadow: [
                                         BoxShadow(
-                                          color: themeColor.withValues(alpha: 0.15),
+                                          color: themeColor.withValues(
+                                            alpha: 0.15,
+                                          ),
                                           blurRadius: 12,
                                           offset: const Offset(0, 4),
                                         ),
@@ -389,7 +412,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                                   const SizedBox(width: 16),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           "Investimento",
@@ -402,7 +426,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                                         ),
                                         const SizedBox(height: 2),
                                         Row(
-                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
                                           children: [
                                             Text(
                                               "R\$ ${totalSpent.toStringAsFixed(2)}",
@@ -415,7 +440,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                                             ),
                                             const SizedBox(width: 6),
                                             Padding(
-                                              padding: const EdgeInsets.only(bottom: 2),
+                                              padding: const EdgeInsets.only(
+                                                bottom: 2,
+                                              ),
                                               child: Text(
                                                 "/ R\$ ${totalEstimatedCost.toStringAsFixed(0)}",
                                                 style: TextStyle(
@@ -429,15 +456,26 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                                         ),
                                         const SizedBox(height: 10),
                                         ClipRRect(
-                                          borderRadius: BorderRadius.circular(10),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
                                           child: TweenAnimationBuilder<double>(
-                                            tween: Tween(begin: 0.0, end: financialProgress.clamp(0.0, 1.0)),
-                                            duration: const Duration(milliseconds: 1200),
+                                            tween: Tween(
+                                              begin: 0.0,
+                                              end: financialProgress.clamp(
+                                                0.0,
+                                                1.0,
+                                              ),
+                                            ),
+                                            duration: const Duration(
+                                              milliseconds: 1200,
+                                            ),
                                             curve: Curves.easeOutCubic,
                                             builder: (context, value, _) {
                                               return LinearProgressIndicator(
                                                 value: value,
-                                                backgroundColor: Colors.white.withValues(alpha: 0.8),
+                                                backgroundColor: Colors.white
+                                                    .withValues(alpha: 0.8),
                                                 color: themeColor,
                                                 minHeight: 7,
                                               );
@@ -462,86 +500,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                     ),
                   ),
 
-                  const SizedBox(height: 20),
-                  // FILTROS - Premium pill chips
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: _ageFilters.map((filter) {
-                        final isSelected = _selectedAgeFilter == filter;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 250),
-                            curve: Curves.easeOut,
-                            child: ChoiceChip(
-                              label: Text(filter),
-                              selected: isSelected,
-                              onSelected: (bool selected) {
-                                setState(
-                                  () => _selectedAgeFilter = selected
-                                      ? filter
-                                      : 'Todos',
-                                );
-                                _chartAnimController.reset();
-                                _chartAnimController.forward();
-                              },
-                              selectedColor: themeColor.withValues(alpha: 0.15),
-                              labelStyle: TextStyle(
-                                color: isSelected ? themeColor : Colors.grey[600],
-                                fontWeight: isSelected
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
-                                fontSize: 13,
-                              ),
-                              backgroundColor: Colors.white,
-                              elevation: isSelected ? 2 : 0,
-                              pressElevation: 1,
-                              shadowColor: themeColor.withValues(alpha: 0.2),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24),
-                                side: BorderSide(
-                                  color: isSelected
-                                      ? themeColor.withValues(alpha: 0.4)
-                                      : Colors.grey.shade200,
-                                  width: isSelected ? 1.5 : 1,
-                                ),
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-
-                  const SizedBox(height: 28),
-                  // Section: Resumo de Gastos
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: themeColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(Icons.pie_chart_rounded, color: themeColor, size: 18),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        "Resumo de Gastos",
-                        style: TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF2D3142),
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _buildFinancialChart(displayItems),
-
                   const SizedBox(height: 28),
                   // Section: Categorias
                   Row(
@@ -552,7 +510,11 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                           color: themeColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(Icons.grid_view_rounded, color: themeColor, size: 18),
+                        child: Icon(
+                          Icons.grid_view_rounded,
+                          color: themeColor,
+                          size: 18,
+                        ),
                       ),
                       const SizedBox(width: 10),
                       Text(
@@ -566,17 +528,18 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
 
+                  //const SizedBox(height: 4),
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 0.95,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 0.95,
+                        ),
                     itemCount: _categoriesConfig.length,
                     itemBuilder: (context, index) {
                       final catConfig = _categoriesConfig[index];
@@ -599,10 +562,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                         builder: (context, value, child) {
                           return Transform.translate(
                             offset: Offset(0, 20 * (1 - value)),
-                            child: Opacity(
-                              opacity: value,
-                              child: child,
-                            ),
+                            child: Opacity(opacity: value, child: child),
                           );
                         },
                         child: _buildCategoryCard(
@@ -616,9 +576,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                       );
                     },
                   ),
-              ],
+                ],
+              ),
             ),
-          ),
           ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () =>
@@ -628,6 +588,166 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
             backgroundColor: themeColor,
             foregroundColor: Colors.white,
           ),
+        );
+      },
+    );
+  }
+
+  void _showFinancialModal(
+    BuildContext context,
+    Color themeColor,
+    List<Map<String, dynamic>> allItemsRaw,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalContext) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            final displayItems = _selectedAgeFilter == 'Todos'
+                ? allItemsRaw
+                : allItemsRaw
+                      .where((i) => i['age_range'] == _selectedAgeFilter)
+                      .toList();
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 48,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Resumo Financeiro",
+                            style: TextStyle(
+                              color: Color(0xFF2D3142),
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          // FILTROS
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: _ageFilters.map((filter) {
+                                final isSelected = _selectedAgeFilter == filter;
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 250),
+                                    curve: Curves.easeOut,
+                                    child: ChoiceChip(
+                                      label: Text(filter),
+                                      selected: isSelected,
+                                      onSelected: (bool selected) {
+                                        final newFilter = selected
+                                            ? filter
+                                            : 'Todos';
+                                        setModalState(
+                                          () => _selectedAgeFilter = newFilter,
+                                        );
+                                        setState(
+                                          () => _selectedAgeFilter = newFilter,
+                                        );
+                                        _chartAnimController.reset();
+                                        _chartAnimController.forward();
+                                      },
+                                      selectedColor: themeColor.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      labelStyle: TextStyle(
+                                        color: isSelected
+                                            ? themeColor
+                                            : Colors.grey[600],
+                                        fontWeight: isSelected
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                        fontSize: 13,
+                                      ),
+                                      backgroundColor: Colors.white,
+                                      elevation: isSelected ? 2 : 0,
+                                      pressElevation: 1,
+                                      shadowColor: themeColor.withValues(
+                                        alpha: 0.2,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(24),
+                                        side: BorderSide(
+                                          color: isSelected
+                                              ? themeColor.withValues(
+                                                  alpha: 0.4,
+                                                )
+                                              : Colors.grey.shade200,
+                                          width: isSelected ? 1.5 : 1,
+                                        ),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                        vertical: 2,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                          // Resumo de Gastos
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: themeColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  Icons.pie_chart_rounded,
+                                  color: themeColor,
+                                  size: 18,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              const Text(
+                                "Gráfico de Gastos",
+                                style: TextStyle(
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF2D3142),
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          _buildFinancialChart(displayItems),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
@@ -925,25 +1045,30 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                                         ),
                                       )
                                     : (scrapedImageUrl != null &&
-                                            scrapedImageUrl!.isNotEmpty
-                                        ? ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                            child: Image.network(
-                                              scrapedImageUrl!,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (context, error,
-                                                      stackTrace) =>
-                                                  const Center(
-                                                child: Icon(Icons.broken_image,
-                                                    color: Colors.grey),
+                                              scrapedImageUrl!.isNotEmpty
+                                          ? ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              child: Image.network(
+                                                scrapedImageUrl!,
+                                                fit: BoxFit.cover,
+                                                errorBuilder:
+                                                    (
+                                                      context,
+                                                      error,
+                                                      stackTrace,
+                                                    ) => const Center(
+                                                      child: Icon(
+                                                        Icons.broken_image,
+                                                        color: Colors.grey,
+                                                      ),
+                                                    ),
                                               ),
-                                            ),
-                                          )
-                                        : const Icon(
-                                            Icons.add_a_photo,
-                                            color: Colors.grey,
-                                          )),
+                                            )
+                                          : const Icon(
+                                              Icons.add_a_photo,
+                                              color: Colors.grey,
+                                            )),
                               ),
                             ),
                             const SizedBox(width: 15),
@@ -1115,8 +1240,11 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
         ),
         child: Column(
           children: [
-            Icon(Icons.insert_chart_outlined_rounded,
-                size: 56, color: Colors.grey[300]),
+            Icon(
+              Icons.insert_chart_outlined_rounded,
+              size: 56,
+              color: Colors.grey[300],
+            ),
             const SizedBox(height: 12),
             Text(
               "Adicione itens com valores\npara ver o resumo",
@@ -1142,8 +1270,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
     // Build category data
     final List<Map<String, dynamic>> chartData = [];
     for (final cat in _categoriesConfig) {
-      final catItems =
-          items.where((i) => i['category'] == cat['name']).toList();
+      final catItems = items
+          .where((i) => i['category'] == cat['name'])
+          .toList();
       if (catItems.isEmpty) continue;
       final totalCat = catItems.fold(
         0.0,
@@ -1153,8 +1282,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
           .where((i) => i['is_purchased'] == true)
           .fold(
             0.0,
-            (sum, item) =>
-                sum + ((item['price'] as num?)?.toDouble() ?? 0.0),
+            (sum, item) => sum + ((item['price'] as num?)?.toDouble() ?? 0.0),
           );
       chartData.add({
         ...cat,
@@ -1167,7 +1295,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
 
     // Sort by total descending for visual impact
     chartData.sort(
-        (a, b) => (b['total'] as double).compareTo(a['total'] as double));
+      (a, b) => (b['total'] as double).compareTo(a['total'] as double),
+    );
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1230,7 +1359,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                   // Category count badge
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 6),
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: widget.currentTheme.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(12),
@@ -1254,24 +1385,28 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                 final index = entry.key;
                 final cat = entry.value;
                 final Color catColor = cat['color'] as Color;
-                final double percent =
-                    (cat['percent'] as double).clamp(0.0, 1.0);
-                final double allocation =
-                    (cat['allocation'] as double).clamp(0.0, 1.0);
-                final double animatedPercent =
-                    percent * _chartAnimation.value;
+                final double percent = (cat['percent'] as double).clamp(
+                  0.0,
+                  1.0,
+                );
+                final double allocation = (cat['allocation'] as double).clamp(
+                  0.0,
+                  1.0,
+                );
+                final double animatedPercent = percent * _chartAnimation.value;
 
                 return Padding(
                   padding: EdgeInsets.only(
-                      bottom: index < chartData.length - 1 ? 16.0 : 0),
+                    bottom: index < chartData.length - 1 ? 16.0 : 0,
+                  ),
                   child: Transform.translate(
                     offset: Offset(
-                        30 *
-                            (1 -
-                                (_chartAnimation.value *
-                                        (1 + index * 0.15))
-                                    .clamp(0.0, 1.0)),
-                        0),
+                      30 *
+                          (1 -
+                              (_chartAnimation.value * (1 + index * 0.15))
+                                  .clamp(0.0, 1.0)),
+                      0,
+                    ),
                     child: Opacity(
                       opacity: (_chartAnimation.value * (1 + index * 0.15))
                           .clamp(0.0, 1.0),
@@ -1286,8 +1421,11 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                                   color: catColor.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: Icon(cat['icon'] as IconData,
-                                    size: 14, color: catColor),
+                                child: Icon(
+                                  cat['icon'] as IconData,
+                                  size: 14,
+                                  color: catColor,
+                                ),
                               ),
                               const SizedBox(width: 10),
                               // Name
@@ -1304,11 +1442,14 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                               // Percentage badge
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
                                 decoration: BoxDecoration(
                                   color: percent >= 1.0
-                                      ? const Color(0xFF66BB6A)
-                                          .withValues(alpha: 0.12)
+                                      ? const Color(
+                                          0xFF66BB6A,
+                                        ).withValues(alpha: 0.12)
                                       : Colors.grey[50],
                                   borderRadius: BorderRadius.circular(8),
                                 ),
@@ -1353,15 +1494,12 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                               ),
                               // Allocation background (lighter)
                               FractionallySizedBox(
-                                widthFactor: allocation *
-                                    _chartAnimation.value,
+                                widthFactor: allocation * _chartAnimation.value,
                                 child: Container(
                                   height: 7,
                                   decoration: BoxDecoration(
-                                    color:
-                                        catColor.withValues(alpha: 0.15),
-                                    borderRadius:
-                                        BorderRadius.circular(4),
+                                    color: catColor.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(4),
                                   ),
                                 ),
                               ),
@@ -1378,12 +1516,10 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                                         catColor,
                                       ],
                                     ),
-                                    borderRadius:
-                                        BorderRadius.circular(4),
+                                    borderRadius: BorderRadius.circular(4),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: catColor
-                                            .withValues(alpha: 0.3),
+                                        color: catColor.withValues(alpha: 0.3),
                                         blurRadius: 4,
                                         offset: const Offset(0, 2),
                                       ),
@@ -2008,13 +2144,16 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                                             height: 70,
                                             fit: BoxFit.cover,
                                             cacheWidth: 200,
-                                            errorBuilder: (context, error,
-                                                    stackTrace) =>
-                                                Icon(
-                                              Icons.shopping_bag_outlined,
-                                              color: Colors.grey[400],
-                                              size: 30,
-                                            ),
+                                            errorBuilder:
+                                                (
+                                                  context,
+                                                  error,
+                                                  stackTrace,
+                                                ) => Icon(
+                                                  Icons.shopping_bag_outlined,
+                                                  color: Colors.grey[400],
+                                                  size: 30,
+                                                ),
                                           ),
                                         ),
                                       )
@@ -2191,13 +2330,16 @@ class _MiniDonutPainter extends CustomPainter {
     // Draw segments
     double startAngle = -math.pi / 2;
     final totalAllocation = data.fold(
-        0.0, (sum, cat) => sum + (cat['allocation'] as double? ?? 0.0));
+      0.0,
+      (sum, cat) => sum + (cat['allocation'] as double? ?? 0.0),
+    );
 
     for (final cat in data) {
       final allocation = (cat['allocation'] as double? ?? 0.0);
       if (allocation <= 0 || totalAllocation <= 0) continue;
 
-      final sweepAngle = (allocation / totalAllocation) * 2 * math.pi * animationValue;
+      final sweepAngle =
+          (allocation / totalAllocation) * 2 * math.pi * animationValue;
       final catColor = cat['color'] as Color;
 
       final paint = Paint()
