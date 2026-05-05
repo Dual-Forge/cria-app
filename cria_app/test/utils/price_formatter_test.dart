@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cria_app/utils/price_formatter.dart';
+import 'package:cria_app/core/utils/price_formatter.dart';
 
 void main() {
   group('formatBRL', () {

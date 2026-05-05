@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:cria_app/services/payment_service.dart';
+import 'package:cria_app/features/store_scraping/services/payment_service.dart';
 
 // 1. Criar os Mocks (Simuladores) do Supabase
 class MockSupabaseClient extends Mock implements SupabaseClient {}

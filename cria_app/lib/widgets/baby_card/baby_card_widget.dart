@@ -5,7 +5,7 @@ import 'bpm_display_widget.dart';
 import 'zodiac_badge_widget.dart';
 import 'trimestre_progress_bar.dart';
 import 'kick_counter_button.dart';
-import '../../utils/baby_data.dart';
+import 'package:cria_app/features/baby/services/baby_data.dart';
 
 class SizeAndWeightDisplayWidget extends StatelessWidget {
   final DateTime? dumDate;

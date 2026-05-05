@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cria_app/utils/zodiac_calculator.dart';
+import 'package:cria_app/features/baby/services/zodiac_calculator.dart';
 
 void main() {
   group('Zodiac Calculator Tests', () {

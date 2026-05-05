@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cria_app/widgets/baby_card/trimestre_progress_bar.dart';
-import 'package:cria_app/utils/trimestre_calculator.dart';
+import 'package:cria_app/core/utils/pregnancy_utils.dart';
 
 void main() {
   group('TrimestreProgressBar', () {

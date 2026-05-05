@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../utils/trimestre_calculator.dart';
+import 'package:cria_app/core/utils/pregnancy_utils.dart';
 
 /// TrimestreProgressBar
 /// 

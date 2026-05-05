@@ -7,14 +7,13 @@ import 'package:url_strategy/url_strategy.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-import 'package:cria_app/screens/auth_flow_screens.dart';
-import 'package:cria_app/screens/web_gift_screen.dart';
-import 'package:cria_app/services/payment_service.dart';
+import 'package:cria_app/core/config/env_config.dart';
+import 'package:cria_app/features/parents/ui/auth_flow_screens.dart';
+import 'package:cria_app/features/store_scraping/ui/web_gift_screen.dart';
+import 'package:cria_app/features/store_scraping/services/payment_service.dart';
 import 'package:cria_app/widgets/app_background.dart';
-import 'package:cria_app/screens/baby_details_screen.dart';
-
-// IMPORTANTE: Importamos a nova vitrine pública!
-import 'package:cria_app/screens/public_registry_screen.dart';
+import 'package:cria_app/features/baby/ui/baby_details_screen.dart';
+import 'package:cria_app/features/store_scraping/ui/public_registry_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,13 +22,13 @@ void main() async {
   await initializeDateFormatting('pt_BR', null);
 
   await Supabase.initialize(
-    url: 'https://drkuxfafxoruuvszowld.supabase.co',
-    anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRya3V4ZmFmeG9ydXV2c3pvd2xkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwNDczNDAsImV4cCI6MjA4NTYyMzM0MH0.Bqx6dSMel9Bj3rjOCXJFINJrhJV8IrhQWOyocrFBxGY',
+    url: EnvConfig.supabaseUrl,
+    anonKey: EnvConfig.supabaseAnonKey,
   );
 
   runApp(CriaApp());
 }
+
 
 class CriaApp extends StatelessWidget {
   CriaApp({super.key});

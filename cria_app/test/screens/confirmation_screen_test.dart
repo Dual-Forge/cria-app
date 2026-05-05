@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cria_app/screens/confirmation_screen.dart';
+import 'package:cria_app/features/store_scraping/ui/confirmation_screen.dart';
 
 void main() {
   group('Task 9.2: ConfirmationScreen Widget Tests', () {

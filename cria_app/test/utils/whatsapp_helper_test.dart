@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cria_app/utils/whatsapp_helper.dart';
+import 'package:cria_app/core/utils/whatsapp_helper.dart';
 
 void main() {
   group('WhatsAppHelper Tests', () {

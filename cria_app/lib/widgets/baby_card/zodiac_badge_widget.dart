@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../utils/zodiac_calculator.dart';
+import 'package:cria_app/features/baby/services/zodiac_calculator.dart';
 
 /// ZodiacBadgeWidget
 /// 

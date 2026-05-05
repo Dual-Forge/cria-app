@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:cria_app/services/payment_service.dart';
-import 'package:cria_app/screens/pix_payment_screen.dart';
+import 'package:cria_app/features/store_scraping/services/payment_service.dart';
+import 'package:cria_app/features/store_scraping/ui/pix_payment_screen.dart';
 
 class MockPaymentService extends Mock implements PaymentService {}
 

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cria_app/utils/trimestre_calculator.dart';
+import 'package:cria_app/core/utils/pregnancy_utils.dart';
 
 void main() {
   group('Trimestre Calculator Tests', () {
