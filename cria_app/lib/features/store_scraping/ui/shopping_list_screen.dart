@@ -1,4 +1,5 @@
 // import 'dart:io'; // Removed for Web compatibility
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
@@ -22,14 +23,20 @@ class ShoppingListScreen extends StatefulWidget {
   State<ShoppingListScreen> createState() => _ShoppingListScreenState();
 }
 
-class _ShoppingListScreenState extends State<ShoppingListScreen> {
+class _ShoppingListScreenState extends State<ShoppingListScreen>
+    with TickerProviderStateMixin {
+  late AnimationController _chartAnimController;
+  late Animation<double> _chartAnimation;
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+
   final List<Map<String, dynamic>> _categoriesConfig = [
-    {'name': 'Higiene', 'icon': Icons.bathtub, 'color': Colors.cyan},
-    {'name': 'Roupas', 'icon': Icons.checkroom, 'color': Colors.orange},
-    {'name': 'Quarto', 'icon': Icons.bed, 'color': Colors.indigo},
-    {'name': 'Passeio', 'icon': Icons.stroller, 'color': Colors.green},
-    {'name': 'Alimentação', 'icon': Icons.restaurant, 'color': Colors.amber},
-    {'name': 'Mamãe', 'icon': Icons.pregnant_woman, 'color': Colors.red},
+    {'name': 'Higiene', 'icon': Icons.bathtub, 'color': const Color(0xFF26C6DA)},
+    {'name': 'Roupas', 'icon': Icons.checkroom, 'color': const Color(0xFFFF8A65)},
+    {'name': 'Quarto', 'icon': Icons.bed, 'color': const Color(0xFF5C6BC0)},
+    {'name': 'Passeio', 'icon': Icons.stroller, 'color': const Color(0xFF66BB6A)},
+    {'name': 'Alimentação', 'icon': Icons.restaurant, 'color': const Color(0xFFFFCA28)},
+    {'name': 'Mamãe', 'icon': Icons.pregnant_woman, 'color': const Color(0xFFEF5350)},
   ];
 
   final List<String> _ageFilters = [
@@ -49,6 +56,27 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   void initState() {
     super.initState();
     _fetchDueDate();
+
+    _chartAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _chartAnimation = CurvedAnimation(
+      parent: _chartAnimController,
+      curve: Curves.easeOutCubic,
+    );
+
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeIn,
+    );
+
+    _chartAnimController.forward();
+    _fadeController.forward();
 
     // Configura o stream corretamente para atualizar em tempo real
     final client = Supabase.instance.client;
@@ -70,6 +98,13 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
         _itemsStream = const Stream.empty();
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _chartAnimController.dispose();
+    _fadeController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchDueDate() async {
@@ -224,148 +259,199 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
 
         return Scaffold(
           backgroundColor: Colors.transparent,
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // CARD FINANCEIRO
-                Container(
-                  padding: const EdgeInsets.only(
-                    top: 60,
-                    bottom: 20,
-                    left: 20,
-                    right: 20,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(30),
-                      bottomRight: Radius.circular(30),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Seu Enxoval",
-                                style: TextStyle(
-                                  color: Colors.grey[800],
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              Text(
-                                _selectedAgeFilter == 'Todos'
-                                    ? "Progresso Geral"
-                                    : "Filtro: $_selectedAgeFilter",
-                                style: TextStyle(
-                                  color: Colors.grey[500],
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
+          body: FadeTransition(
+            opacity: _fadeAnimation,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // CARD FINANCEIRO - Clicável, seguindo o padrão do BabyCardWidget
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Clicado"),
+                            duration: Duration(seconds: 1),
                           ),
-                          CircularPercentIndicator(
-                            radius: 40.0,
-                            lineWidth: 8.0,
-                            percent: itemsProgress,
-                            backgroundColor: Colors.grey[100]!,
-                            progressColor: themeColor,
-                            circularStrokeCap: CircularStrokeCap.round,
-                            animation: true,
-                            center: Text(
-                              "${(itemsProgress * 100).toInt()}%",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: themeColor,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 25),
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: themeColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(32),
+                      child: Container(
+                        padding: const EdgeInsets.only(
+                          top: 40, // Reduzi um pouco para compensar o padding do SingleChildScrollView
+                          bottom: 24,
+                          left: 20,
+                          right: 20,
                         ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: themeColor.withValues(alpha: 0.2),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                Icons.attach_money,
-                                color: themeColor,
-                                size: 28,
-                              ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(32),
+                          boxShadow: [
+                            BoxShadow(
+                              color: themeColor.withValues(alpha: 0.08),
+                              blurRadius: 24,
+                              offset: const Offset(0, 12),
                             ),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Investimento Total",
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Seu Enxoval",
+                                        style: TextStyle(
+                                          color: const Color(0xFF2D3142),
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: -0.8,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      AnimatedSwitcher(
+                                        duration: const Duration(milliseconds: 300),
+                                        child: Text(
+                                          _selectedAgeFilter == 'Todos'
+                                              ? "$boughtItems de $totalItems itens concluídos"
+                                              : "Filtro: $_selectedAgeFilter",
+                                          key: ValueKey(_selectedAgeFilter),
+                                          style: TextStyle(
+                                            color: Colors.grey[500],
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "R\$ ${totalSpent.toStringAsFixed(2)}",
+                                ),
+                                const SizedBox(width: 12),
+                                CircularPercentIndicator(
+                                  radius: 42.0,
+                                  lineWidth: 7.0,
+                                  percent: itemsProgress.clamp(0.0, 1.0),
+                                  backgroundColor: themeColor.withValues(alpha: 0.1),
+                                  progressColor: themeColor,
+                                  circularStrokeCap: CircularStrokeCap.round,
+                                  animation: true,
+                                  animationDuration: 1000,
+                                  center: Text(
+                                    "${(itemsProgress * 100).toInt()}%",
                                     style: TextStyle(
-                                      color: Colors.grey[900],
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 22,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: LinearProgressIndicator(
-                                      value: financialProgress.clamp(0.0, 1.0),
-                                      backgroundColor: Colors.white,
+                                      fontWeight: FontWeight.w800,
                                       color: themeColor,
-                                      minHeight: 6,
+                                      fontSize: 17,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "de R\$ ${totalEstimatedCost.toStringAsFixed(2)} planejado",
-                                    style: TextStyle(
-                                      color: Colors.grey[500],
-                                      fontSize: 11,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            // Investment summary card
+                            Container(
+                              padding: const EdgeInsets.all(18),
+                              decoration: BoxDecoration(
+                                color: themeColor.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: themeColor.withValues(alpha: 0.12),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: themeColor.withValues(alpha: 0.15),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
                                     ),
+                                    child: Icon(
+                                      Icons.account_balance_wallet_rounded,
+                                      color: themeColor,
+                                      size: 24,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "Investimento",
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            letterSpacing: 0.3,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Row(
+                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                          children: [
+                                            Text(
+                                              "R\$ ${totalSpent.toStringAsFixed(2)}",
+                                              style: const TextStyle(
+                                                color: Color(0xFF2D3142),
+                                                fontWeight: FontWeight.w800,
+                                                fontSize: 22,
+                                                letterSpacing: -0.5,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Padding(
+                                              padding: const EdgeInsets.only(bottom: 2),
+                                              child: Text(
+                                                "/ R\$ ${totalEstimatedCost.toStringAsFixed(0)}",
+                                                style: TextStyle(
+                                                  color: Colors.grey[400],
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 10),
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(10),
+                                          child: TweenAnimationBuilder<double>(
+                                            tween: Tween(begin: 0.0, end: financialProgress.clamp(0.0, 1.0)),
+                                            duration: const Duration(milliseconds: 1200),
+                                            curve: Curves.easeOutCubic,
+                                            builder: (context, value, _) {
+                                              return LinearProgressIndicator(
+                                                value: value,
+                                                backgroundColor: Colors.white.withValues(alpha: 0.8),
+                                                color: themeColor,
+                                                minHeight: 7,
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    Icons.chevron_right,
+                                    color: themeColor.withValues(alpha: 0.7),
+                                    size: 24,
                                   ),
                                 ],
                               ),
@@ -373,100 +459,166 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                           ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
 
-                const SizedBox(height: 20),
-                // FILTROS
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: _ageFilters.map((filter) {
-                      final isSelected = _selectedAgeFilter == filter;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          label: Text(filter),
-                          selected: isSelected,
-                          onSelected: (bool selected) => setState(
-                            () => _selectedAgeFilter = selected
-                                ? filter
-                                : 'Todos',
-                          ),
-                          selectedColor: themeColor.withOpacity(0.2),
-                          labelStyle: TextStyle(
-                            color: isSelected ? themeColor : Colors.black87,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
-                          backgroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: BorderSide(
-                              color: isSelected
-                                  ? themeColor
-                                  : Colors.grey.shade300,
+                  const SizedBox(height: 20),
+                  // FILTROS - Premium pill chips
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: _ageFilters.map((filter) {
+                        final isSelected = _selectedAgeFilter == filter;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 250),
+                            curve: Curves.easeOut,
+                            child: ChoiceChip(
+                              label: Text(filter),
+                              selected: isSelected,
+                              onSelected: (bool selected) {
+                                setState(
+                                  () => _selectedAgeFilter = selected
+                                      ? filter
+                                      : 'Todos',
+                                );
+                                _chartAnimController.reset();
+                                _chartAnimController.forward();
+                              },
+                              selectedColor: themeColor.withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: isSelected ? themeColor : Colors.grey[600],
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                fontSize: 13,
+                              ),
+                              backgroundColor: Colors.white,
+                              elevation: isSelected ? 2 : 0,
+                              pressElevation: 1,
+                              shadowColor: themeColor.withValues(alpha: 0.2),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                                side: BorderSide(
+                                  color: isSelected
+                                      ? themeColor.withValues(alpha: 0.4)
+                                      : Colors.grey.shade200,
+                                  width: isSelected ? 1.5 : 1,
+                                ),
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                             ),
                           ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 28),
+                  // Section: Resumo de Gastos
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: themeColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(Icons.pie_chart_rounded, color: themeColor, size: 18),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        "Resumo de Gastos",
+                        style: TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF2D3142),
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _buildFinancialChart(displayItems),
+
+                  const SizedBox(height: 28),
+                  // Section: Categorias
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: themeColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(Icons.grid_view_rounded, color: themeColor, size: 18),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        "Categorias",
+                        style: TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF2D3142),
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 0.95,
+                    ),
+                    itemCount: _categoriesConfig.length,
+                    itemBuilder: (context, index) {
+                      final catConfig = _categoriesConfig[index];
+                      final catName = catConfig['name'];
+                      final catItems = displayItems
+                          .where((i) => i['category'] == catName)
+                          .toList();
+                      final catTotal = catItems.length;
+                      final catBought = catItems
+                          .where((i) => i['is_purchased'] == true)
+                          .length;
+                      final catProgress = catTotal == 0
+                          ? 0.0
+                          : (catBought / catTotal);
+                      final tip = _getCategoryTip(catName, currentWeeks);
+                      return TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0.0, end: 1.0),
+                        duration: Duration(milliseconds: 400 + (index * 100)),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, value, child) {
+                          return Transform.translate(
+                            offset: Offset(0, 20 * (1 - value)),
+                            child: Opacity(
+                              opacity: value,
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: _buildCategoryCard(
+                          context,
+                          catConfig,
+                          catTotal,
+                          catBought,
+                          catProgress,
+                          tip,
                         ),
                       );
-                    }).toList(),
+                    },
                   ),
-                ),
-
-                const SizedBox(height: 25),
-                const Text(
-                  "Resumo de Gastos",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 15),
-                _buildFinancialChart(displayItems),
-
-                const SizedBox(height: 25),
-                const Text(
-                  "Categorias",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 15),
-
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 0.95,
-                  ),
-                  itemCount: _categoriesConfig.length,
-                  itemBuilder: (context, index) {
-                    final catConfig = _categoriesConfig[index];
-                    final catName = catConfig['name'];
-                    final catItems = displayItems
-                        .where((i) => i['category'] == catName)
-                        .toList();
-                    final catTotal = catItems.length;
-                    final catBought = catItems
-                        .where((i) => i['is_purchased'] == true)
-                        .length;
-                    final catProgress = catTotal == 0
-                        ? 0.0
-                        : (catBought / catTotal);
-                    final tip = _getCategoryTip(catName, currentWeeks);
-                    return _buildCategoryCard(
-                      context,
-                      catConfig,
-                      catTotal,
-                      catBought,
-                      catProgress,
-                      tip,
-                    );
-                  },
-                ),
               ],
             ),
+          ),
           ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () =>
@@ -948,79 +1100,309 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
 
   Widget _buildFinancialChart(List<Map<String, dynamic>> items) {
     if (items.isEmpty) {
-      return const Text("Adicione itens com valores para ver o gráfico.");
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Icon(Icons.insert_chart_outlined_rounded,
+                size: 56, color: Colors.grey[300]),
+            const SizedBox(height: 12),
+            Text(
+              "Adicione itens com valores\npara ver o resumo",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+      );
     }
-    return Column(
-      children: _categoriesConfig.map((cat) {
-        final catItems = items
-            .where((i) => i['category'] == cat['name'])
-            .toList();
-        if (catItems.isEmpty) return const SizedBox.shrink();
-        final totalCat = catItems.fold(
-          0.0,
-          (sum, item) => sum + ((item['price'] as num?)?.toDouble() ?? 0.0),
-        );
-        final spentCat = catItems
-            .where((i) => i['is_purchased'] == true)
-            .fold(
-              0.0,
-              (sum, item) => sum + ((item['price'] as num?)?.toDouble() ?? 0.0),
-            );
-        final percent = totalCat == 0 ? 0.0 : (spentCat / totalCat);
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Icon(cat['icon'], size: 16, color: cat['color']),
-                      const SizedBox(width: 5),
-                      Text(
-                        cat['name'],
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    "R\$ ${spentCat.toStringAsFixed(0)} / R\$ ${totalCat.toStringAsFixed(0)}",
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 5),
-              Stack(
-                children: [
-                  Container(
-                    height: 8,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  FractionallySizedBox(
-                    widthFactor: percent.clamp(0.0, 1.0),
-                    child: Container(
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: cat['color'],
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+
+    // Calculate grand total for percentage allocation
+    final grandTotal = items.fold(
+      0.0,
+      (sum, item) => sum + ((item['price'] as num?)?.toDouble() ?? 0.0),
+    );
+
+    // Build category data
+    final List<Map<String, dynamic>> chartData = [];
+    for (final cat in _categoriesConfig) {
+      final catItems =
+          items.where((i) => i['category'] == cat['name']).toList();
+      if (catItems.isEmpty) continue;
+      final totalCat = catItems.fold(
+        0.0,
+        (sum, item) => sum + ((item['price'] as num?)?.toDouble() ?? 0.0),
+      );
+      final spentCat = catItems
+          .where((i) => i['is_purchased'] == true)
+          .fold(
+            0.0,
+            (sum, item) =>
+                sum + ((item['price'] as num?)?.toDouble() ?? 0.0),
+          );
+      chartData.add({
+        ...cat,
+        'total': totalCat,
+        'spent': spentCat,
+        'percent': totalCat == 0 ? 0.0 : (spentCat / totalCat),
+        'allocation': grandTotal == 0 ? 0.0 : (totalCat / grandTotal),
+      });
+    }
+
+    // Sort by total descending for visual impact
+    chartData.sort(
+        (a, b) => (b['total'] as double).compareTo(a['total'] as double));
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
-        );
-      }).toList(),
+        ],
+      ),
+      child: AnimatedBuilder(
+        animation: _chartAnimation,
+        builder: (context, _) {
+          return Column(
+            children: [
+              // Mini donut chart row
+              Row(
+                children: [
+                  // Custom donut
+                  SizedBox(
+                    width: 64,
+                    height: 64,
+                    child: CustomPaint(
+                      painter: _MiniDonutPainter(
+                        data: chartData,
+                        animationValue: _chartAnimation.value,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "R\$ ${grandTotal.toStringAsFixed(0)}",
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF2D3142),
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          "Valor total planejado",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Category count badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: widget.currentTheme.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      "${chartData.length} cat.",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: widget.currentTheme,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Divider(color: Colors.grey[100], height: 1),
+              const SizedBox(height: 16),
+              // Category bars
+              ...chartData.asMap().entries.map((entry) {
+                final index = entry.key;
+                final cat = entry.value;
+                final Color catColor = cat['color'] as Color;
+                final double percent =
+                    (cat['percent'] as double).clamp(0.0, 1.0);
+                final double allocation =
+                    (cat['allocation'] as double).clamp(0.0, 1.0);
+                final double animatedPercent =
+                    percent * _chartAnimation.value;
+
+                return Padding(
+                  padding: EdgeInsets.only(
+                      bottom: index < chartData.length - 1 ? 16.0 : 0),
+                  child: Transform.translate(
+                    offset: Offset(
+                        30 *
+                            (1 -
+                                (_chartAnimation.value *
+                                        (1 + index * 0.15))
+                                    .clamp(0.0, 1.0)),
+                        0),
+                    child: Opacity(
+                      opacity: (_chartAnimation.value * (1 + index * 0.15))
+                          .clamp(0.0, 1.0),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              // Category icon
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: catColor.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(cat['icon'] as IconData,
+                                    size: 14, color: catColor),
+                              ),
+                              const SizedBox(width: 10),
+                              // Name
+                              Expanded(
+                                child: Text(
+                                  cat['name'] as String,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                    color: Color(0xFF2D3142),
+                                  ),
+                                ),
+                              ),
+                              // Percentage badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: percent >= 1.0
+                                      ? const Color(0xFF66BB6A)
+                                          .withValues(alpha: 0.12)
+                                      : Colors.grey[50],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  "${(percent * 100).toInt()}%",
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: percent >= 1.0
+                                        ? const Color(0xFF66BB6A)
+                                        : Colors.grey[600],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Amount
+                              SizedBox(
+                                width: 70,
+                                child: Text(
+                                  "R\$ ${(cat['spent'] as double).toStringAsFixed(0)}",
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                    color: Colors.grey[800],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          // Animated progress bar
+                          Stack(
+                            children: [
+                              Container(
+                                height: 7,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                              // Allocation background (lighter)
+                              FractionallySizedBox(
+                                widthFactor: allocation *
+                                    _chartAnimation.value,
+                                child: Container(
+                                  height: 7,
+                                  decoration: BoxDecoration(
+                                    color:
+                                        catColor.withValues(alpha: 0.15),
+                                    borderRadius:
+                                        BorderRadius.circular(4),
+                                  ),
+                                ),
+                              ),
+                              // Spent bar (main)
+                              FractionallySizedBox(
+                                widthFactor: (animatedPercent * allocation)
+                                    .clamp(0.0, 1.0),
+                                child: Container(
+                                  height: 7,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        catColor.withValues(alpha: 0.7),
+                                        catColor,
+                                      ],
+                                    ),
+                                    borderRadius:
+                                        BorderRadius.circular(4),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: catColor
+                                            .withValues(alpha: 0.3),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -1782,5 +2164,63 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
         },
       ),
     );
+  }
+}
+
+/// Custom painter for the mini donut chart in the financial summary.
+class _MiniDonutPainter extends CustomPainter {
+  final List<Map<String, dynamic>> data;
+  final double animationValue;
+
+  _MiniDonutPainter({required this.data, required this.animationValue});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 2 - 6;
+    const strokeWidth = 10.0;
+
+    // Background ring
+    final bgPaint = Paint()
+      ..color = const Color(0xFFF5F5F5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radius, bgPaint);
+
+    // Draw segments
+    double startAngle = -math.pi / 2;
+    final totalAllocation = data.fold(
+        0.0, (sum, cat) => sum + (cat['allocation'] as double? ?? 0.0));
+
+    for (final cat in data) {
+      final allocation = (cat['allocation'] as double? ?? 0.0);
+      if (allocation <= 0 || totalAllocation <= 0) continue;
+
+      final sweepAngle = (allocation / totalAllocation) * 2 * math.pi * animationValue;
+      final catColor = cat['color'] as Color;
+
+      final paint = Paint()
+        ..color = catColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round;
+
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sweepAngle - 0.04, // Small gap between segments
+        false,
+        paint,
+      );
+
+      startAngle += sweepAngle;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MiniDonutPainter oldDelegate) {
+    return oldDelegate.animationValue != animationValue ||
+        oldDelegate.data != data;
   }
 }
