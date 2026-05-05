@@ -194,8 +194,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         elevation: 0,
         foregroundColor: Colors.black,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
         child: Column(
           children: [
             // --- 1. FOTO DE PERFIL ---
@@ -403,6 +404,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             const SizedBox(height: 30),
           ],
         ),
+      ),
       ),
     );
   }

@@ -130,7 +130,9 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: _buildOverviewTab(),
+      body: SafeArea(
+        child: _buildOverviewTab(),
+      ),
     );
   }
 

@@ -343,10 +343,11 @@ class _SplashScreenState extends State<SplashScreen>
 
         return Scaffold(
           backgroundColor: Colors.transparent,
-          body: GestureDetector(
-            onTap: () {
-              context.go('/home');
-            },
+          body: SafeArea(
+            child: GestureDetector(
+              onTap: () {
+                context.go('/home');
+              },
             behavior: HitTestBehavior.opaque,
             child: StreamBuilder<List<Map<String, dynamic>>>(
               stream: _familyId != null
@@ -482,6 +483,7 @@ class _SplashScreenState extends State<SplashScreen>
                 );
               },
             ),
+          ),
           ),
         );
       },

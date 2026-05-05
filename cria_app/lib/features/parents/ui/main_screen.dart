@@ -113,7 +113,9 @@ class _MainScreenState extends State<MainScreen> {
         return Scaffold(
           backgroundColor: Colors.transparent,
           extendBody: false,
-          body: IndexedStack(index: _currentIndex, children: screens),
+          body: SafeArea(
+            child: IndexedStack(index: _currentIndex, children: screens),
+          ),
           bottomNavigationBar: CurvedNavigationBar(
             index: _currentIndex,
             backgroundColor: Colors.transparent,

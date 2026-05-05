@@ -72,8 +72,9 @@ class _BabyRegistrationScreenState extends State<BabyRegistrationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Detalhes do Bebê")),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -165,6 +166,7 @@ class _BabyRegistrationScreenState extends State<BabyRegistrationScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
