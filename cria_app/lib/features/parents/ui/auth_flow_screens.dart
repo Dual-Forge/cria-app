@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_screen.dart';
 import 'main_screen.dart';
 import 'profile_setup_screen.dart'; // Certifique-se de que esta tela existe
+import '../../splash/ui/splash_screen.dart';
 
 class AuthGateScreen extends StatelessWidget {
   const AuthGateScreen({super.key});
@@ -38,7 +39,9 @@ class AuthGateScreen extends StatelessWidget {
             if (profileSnapshot.hasError) {
               return Scaffold(
                 body: Center(
-                  child: Text("Erro ao carregar perfil: ${profileSnapshot.error}"),
+                  child: Text(
+                    "Erro ao carregar perfil: ${profileSnapshot.error}",
+                  ),
                 ),
               );
             }
@@ -48,8 +51,8 @@ class AuthGateScreen extends StatelessWidget {
               return const ProfileSetupScreen();
             }
 
-            // 4. Se logou e JÁ TEM perfil, vai para a MainScreen
-            return const MainScreen();
+            // 4. Se logou e JÁ TEM perfil, vai para a SplashScreen
+            return const SplashScreen();
           },
         );
       },

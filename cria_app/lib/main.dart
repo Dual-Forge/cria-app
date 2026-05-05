@@ -14,6 +14,8 @@ import 'package:cria_app/features/store_scraping/services/payment_service.dart';
 import 'package:cria_app/widgets/app_background.dart';
 import 'package:cria_app/features/baby/ui/baby_details_screen.dart';
 import 'package:cria_app/features/store_scraping/ui/public_registry_screen.dart';
+import 'package:cria_app/features/splash/ui/splash_screen.dart';
+import 'package:cria_app/features/parents/ui/main_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,14 +31,18 @@ void main() async {
   runApp(CriaApp());
 }
 
-
 class CriaApp extends StatelessWidget {
   CriaApp({super.key});
 
   final GoRouter _router = GoRouter(
-    initialLocation: '/',
+    initialLocation: '/splash',
     routes: [
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(path: '/', builder: (context, state) => const AuthGateScreen()),
+      GoRoute(path: '/home', builder: (context, state) => const MainScreen()),
 
       // 1. ROTA PÚBLICA (Vitrine) - O link que os pais compartilham
       GoRoute(

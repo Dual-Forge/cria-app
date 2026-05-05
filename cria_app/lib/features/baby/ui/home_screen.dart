@@ -1,10 +1,5 @@
-import 'dart:ui' as ui;
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
-import 'package:url_launcher/url_launcher.dart';
-import 'package:cria_app/features/baby/services/baby_data.dart';
 import 'package:cria_app/features/ai_specialist/services/pregnancy_ai_service.dart';
 import 'package:cria_app/features/ai_specialist/services/gemini_service.dart';
 import 'package:cria_app/features/ai_specialist/ui/chatbot_screen.dart';
@@ -34,12 +29,7 @@ class HomePregnancyScreen extends StatefulWidget {
   State<HomePregnancyScreen> createState() => _HomePregnancyScreenState();
 }
 
-class _HomePregnancyScreenState extends State<HomePregnancyScreen>
-    with TickerProviderStateMixin {
-  late AnimationController _heartController;
-  late Animation<double> _heartScale;
-  late ScrollController _scrollController;
-
+class _HomePregnancyScreenState extends State<HomePregnancyScreen> {
   // AI Service logic
   final PregnancyAIService _fallbackAiService = PregnancyAIService();
   final GeminiService _geminiService = GeminiService();
@@ -50,21 +40,10 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
   @override
   void initState() {
     super.initState();
-    _heartController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
-
-    _heartScale = Tween<double>(begin: 0.95, end: 1.05).animate(
-      CurvedAnimation(parent: _heartController, curve: Curves.easeInOut),
-    );
-    _scrollController = ScrollController();
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
-    _heartController.dispose();
     super.dispose();
   }
 
@@ -155,109 +134,8 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
     );
   }
 
-  Widget _buildDynamicTitle(DateTime? actualDumDate) {
-    String nameToDisplay = widget.babyName ?? "seu bebê";
-    String textPrefix = "Aguardando a chegada de ";
-    String textSuffix = ".";
-    bool isBorn = false;
-
-    if (actualDumDate != null) {
-      final edd = actualDumDate.add(const Duration(days: 280));
-      final daysRemaining = edd.difference(DateTime.now()).inDays;
-
-      if (daysRemaining > 0) {
-        textPrefix =
-            "Faltam aproximadamente $daysRemaining dias para a chegada de ";
-        textSuffix = ".";
-      } else if (daysRemaining == 0) {
-        textPrefix = "É hoje! O grande dia da chegada de ";
-        textSuffix = ".";
-      } else {
-        isBorn = true;
-        textPrefix = "";
-        textSuffix = " nasceu há ${daysRemaining.abs()} dias!";
-      }
-    }
-
-    return RepaintBoundary(
-      child: AnimatedBuilder(
-        animation: _heartScale,
-        builder: (context, child) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: RichText(
-              textAlign: TextAlign.center,
-              text: TextSpan(
-                style: GoogleFonts.petitFormalScript(
-                  fontSize: 26,
-                  color: const Color(0xFF2D3142),
-                ),
-                children: [
-                  if (isBorn) ...[
-                    WidgetSpan(
-                      alignment: PlaceholderAlignment.baseline,
-                      baseline: TextBaseline.alphabetic,
-                      child: Transform.scale(
-                        scale: _heartScale.value,
-                        child: Text(
-                          nameToDisplay,
-                          style: GoogleFonts.petitFormalScript(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: widget.themeColor,
-                            shadows: [
-                              Shadow(
-                                color: widget.themeColor.withValues(alpha: 0.5),
-                                blurRadius: 10 * _heartScale.value,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    TextSpan(text: textSuffix),
-                  ] else ...[
-                    TextSpan(text: textPrefix),
-                    WidgetSpan(
-                      alignment: PlaceholderAlignment.baseline,
-                      baseline: TextBaseline.alphabetic,
-                      child: Transform.scale(
-                        scale: _heartScale.value,
-                        child: Text(
-                          nameToDisplay,
-                          style: GoogleFonts.petitFormalScript(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: widget.themeColor,
-                            shadows: [
-                              Shadow(
-                                color: widget.themeColor.withValues(alpha: 0.5),
-                                blurRadius: 10 * _heartScale.value,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    TextSpan(text: textSuffix),
-                  ],
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   // --- ABA 1: VISÃO GERAL ---
   Widget _buildOverviewTab() {
-    String centerName =
-        widget.babyName?.toUpperCase() ??
-        (widget.babyGender == 'menino'
-            ? "MENINO"
-            : (widget.babyGender == 'menina' ? "MENINA" : "BEBÊ"));
-
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: widget.familyId != null
           ? Supabase.instance.client
@@ -267,7 +145,6 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
           : const Stream.empty(),
       builder: (context, snapshot) {
         Map<String, dynamic>? momProfile;
-        Map<String, dynamic>? dadProfile;
         DateTime? actualDumDate = widget.dumDate;
         int currentWeeks = _calculateWeeks(actualDumDate);
         String role = 'mae';
@@ -288,9 +165,6 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
               currentWeeks = _calculateWeeks(actualDumDate);
             }
           } catch (_) {}
-          try {
-            dadProfile = profiles.firstWhere((p) => p['role'] == 'pai');
-          } catch (_) {}
         }
 
         if (snapshot.connectionState != ConnectionState.waiting ||
@@ -304,150 +178,10 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
         }
 
         // final babyData = BabyData.getData(currentWeeks); // Unused
-        final double screenWidth = MediaQuery.of(context).size.width;
-        final double heartContainerSize = screenWidth * 0.85;
 
         return CustomScrollView(
-          controller: _scrollController,
           physics: const BouncingScrollPhysics(),
           slivers: [
-            // --- FASE 2: HERO SECTION (100vh) ---
-            SliverToBoxAdapter(
-              child: GestureDetector(
-                onTap: () {
-                  _scrollController.animateTo(
-                    MediaQuery.of(context).size.height,
-                    duration: const Duration(milliseconds: 600),
-                    curve: Curves.easeInOut,
-                  );
-                },
-                child: SizedBox(
-                  height: MediaQuery.of(context).size.height,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Spacer(flex: 3),
-                      Transform.translate(
-                        offset: const Offset(
-                          0,
-                          45,
-                        ), // Puxa o texto para perto do coração (Auréola)
-                        child: _buildDynamicTitle(actualDumDate),
-                      ),
-
-                      // Contêiner principal com o Coração e os Avatares
-                      SizedBox(
-                        width: heartContainerSize,
-                        height: heartContainerSize,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // 1. Fundo do Coração Pulsante
-                            AnimatedBuilder(
-                              animation: _heartScale,
-                              builder: (context, child) {
-                                return Transform.scale(
-                                  scale: _heartScale.value,
-                                  child: CustomPaint(
-                                    size: Size(
-                                      heartContainerSize,
-                                      heartContainerSize,
-                                    ),
-                                    painter: HeartBackgroundPainter(
-                                      color: widget.themeColor.withValues(
-                                        alpha: 0.08,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-
-                            // 2. Linha Tracejada Estática formando um Coração menor
-                            CustomPaint(
-                              size: Size(
-                                heartContainerSize,
-                                heartContainerSize,
-                              ),
-                              painter: HeartDashedPathPainter(
-                                color: widget.themeColor.withValues(alpha: 0.6),
-                              ),
-                            ),
-
-                            // 3. Avatares perfeitamente alinhados na linha
-                            // Mamãe (Topo Esquerdo)
-                            Positioned(
-                              left: heartContainerSize * 0.10,
-                              top: heartContainerSize * 0.15,
-                              child: _buildAvatarFloat(
-                                momProfile,
-                                Colors.pinkAccent.shade100,
-                                80,
-                                momProfile?['nickname'] ?? "Mamãe",
-                              ),
-                            ),
-
-                            // Papai (Topo Direito)
-                            Positioned(
-                              right: heartContainerSize * 0.10,
-                              top: heartContainerSize * 0.15,
-                              child: _buildAvatarFloat(
-                                dadProfile,
-                                Colors.blueGrey,
-                                80,
-                                dadProfile?['nickname'] ?? "Papai",
-                              ),
-                            ),
-
-                            // Bebê (Base Centro)
-                            Positioned(
-                              bottom: heartContainerSize * 0.0,
-                              child: _buildBabyAvatar(centerName),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const Spacer(flex: 2),
-
-                      // Indicador de Scroll interativo
-                      AnimatedBuilder(
-                        animation: _heartController,
-                        builder: (context, child) {
-                          return Transform.translate(
-                            offset: Offset(0, 10 * _heartController.value),
-                            child: Column(
-                              children: [
-                                Text(
-                                  "Deslize ou toque para continuar",
-                                  style: TextStyle(
-                                    color: widget.themeColor.withValues(
-                                      alpha: 0.6,
-                                    ),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Icon(
-                                  Icons.keyboard_double_arrow_down,
-                                  color: widget.themeColor.withValues(
-                                    alpha: 0.6,
-                                  ),
-                                  size: 30,
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 40),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
             // --- FASE 3: BABY CARD (NOVO) ---
             SliverToBoxAdapter(
               child: Padding(
@@ -650,132 +384,6 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
     );
   }
 
-  Widget _buildBabyAvatar(String centerName) {
-    // Tamanho padronizado: 80x80
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 80,
-          height: 80,
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: widget.themeColor.withValues(alpha: 0.2),
-                blurRadius: 20,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
-          child: CircleAvatar(
-            backgroundColor: widget.themeColor.withValues(alpha: 0.05),
-            child:
-                widget.babyPhotoUrl != null && widget.babyPhotoUrl!.isNotEmpty
-                ? ClipOval(
-                    child: Image.network(
-                      widget.babyPhotoUrl!,
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Icon(
-                        Icons.child_care_rounded,
-                        color: widget.themeColor,
-                        size: 40,
-                      ),
-                    ),
-                  )
-                : Icon(
-                    Icons.child_care_rounded,
-                    color: widget.themeColor,
-                    size: 40,
-                  ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          centerName,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF2D3142),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAvatarFloat(
-    Map<String, dynamic>? profile,
-    Color color,
-    double size,
-    String label,
-  ) {
-    final String? photoUrl = profile?['photo_url'];
-    // Size agora é sempre garantido em 80 de fora, mas o parâmetro 'size' dita o círculo
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 3),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 10,
-              ),
-            ],
-          ),
-          child: CircleAvatar(
-            backgroundColor: color.withValues(alpha: 0.1),
-            child: (photoUrl != null && photoUrl.isNotEmpty)
-                ? ClipOval(
-                    child: Image.network(
-                      photoUrl,
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Text(
-                        profile?['nickname']?[0]?.toUpperCase() ??
-                            label[0].toUpperCase(),
-                        style: TextStyle(
-                          color: color,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  )
-                : Text(
-                    profile?['nickname']?[0]?.toUpperCase() ??
-                        label[0].toUpperCase(),
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF2D3142),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildPremiumTipCard(PregnancyTip tip, int index) {
     final colors = [
       const Color(0xFFE3F2FD),
@@ -933,94 +541,4 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen>
       },
     );
   }
-}
-
-class HeartBackgroundPainter extends CustomPainter {
-  final Color color;
-
-  HeartBackgroundPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    final path = _createHeartPath(size);
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class HeartDashedPathPainter extends CustomPainter {
-  final Color color;
-
-  HeartDashedPathPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final path = _createHeartPath(size);
-    final dashedPath = _createDashedPath(path, dashLength: 8, dashSpace: 6);
-
-    canvas.drawPath(dashedPath, paint);
-  }
-
-  Path _createDashedPath(
-    Path source, {
-    required double dashLength,
-    required double dashSpace,
-  }) {
-    final Path dest = Path();
-    for (final ui.PathMetric metric in source.computeMetrics()) {
-      double distance = 0.0;
-      while (distance < metric.length) {
-        final double length = dashLength;
-        dest.addPath(
-          metric.extractPath(distance, distance + length),
-          Offset.zero,
-        );
-        distance += length + dashSpace;
-      }
-    }
-    return dest;
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-Path _createHeartPath(Size size) {
-  final double width = size.width;
-  final double height = size.height;
-  final path = Path();
-  // Começa no cleft (centro-topo)
-  path.moveTo(0.5 * width, height * 0.35);
-  // Curva da orelha esquerda
-  path.cubicTo(
-    0.2 * width,
-    height * 0.05,
-    -0.25 * width,
-    height * 0.45,
-    0.5 * width,
-    height * 0.90,
-  );
-  // Volta para o cleft para curvar a direita
-  path.moveTo(0.5 * width, height * 0.35);
-  path.cubicTo(
-    0.8 * width,
-    height * 0.05,
-    1.25 * width,
-    height * 0.45,
-    0.5 * width,
-    height * 0.90,
-  );
-  return path;
 }
