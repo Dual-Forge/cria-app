@@ -75,98 +75,98 @@ class _BabyRegistrationScreenState extends State<BabyRegistrationScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.child_care, size: 80, color: Colors.purple),
-            const SizedBox(height: 20),
-            const Text(
-              "Menino ou Menina?",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              "Isso vai definir as cores e o tema do aplicativo para você e seu parceiro(a)!",
-              style: TextStyle(color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 30),
-
-            // Campo Nome
-            TextField(
-              controller: _nameController,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: "Nome do Bebê (Opcional)",
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.abc),
-                helperText: "Você pode mudar isso depois nos Ajustes",
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.child_care, size: 80, color: Colors.purple),
+              const SizedBox(height: 20),
+              const Text(
+                "Menino ou Menina?",
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: 20),
-
-            // Seleção de Sexo
-            DropdownButtonFormField<String>(
-              initialValue: _selectedGender,
-              decoration: const InputDecoration(
-                labelText: "Sexo do Bebê",
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.wc),
+              const SizedBox(height: 10),
+              const Text(
+                "Isso vai definir as cores e o tema do aplicativo para você e seu parceiro(a)!",
+                style: TextStyle(color: Colors.grey),
+                textAlign: TextAlign.center,
               ),
-              items: const [
-                DropdownMenuItem(
-                  value: 'menino',
-                  child: Text("Menino 💙 (Tema Azul)"),
-                ),
-                DropdownMenuItem(
-                  value: 'menina',
-                  child: Text("Menina 🩷 (Tema Rosa)"),
-                ),
-              ],
-              onChanged: (v) => setState(() => _selectedGender = v),
-              hint: const Text("Surpresa / Ainda não sei"),
-            ),
+              const SizedBox(height: 30),
 
-            const SizedBox(height: 40),
-
-            // Botão Salvar
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _saveBabyData,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purple,
-                  foregroundColor: Colors.white,
+              // Campo Nome
+              TextField(
+                controller: _nameController,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: "Nome do Bebê (Opcional)",
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.abc),
+                  helperText: "Você pode mudar isso depois nos Ajustes",
                 ),
-                child: _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text("Salvar e Entrar"),
               ),
-            ),
+              const SizedBox(height: 20),
 
-            const SizedBox(height: 10),
-            TextButton(
-              onPressed: () {
-                // Pular essa etapa (vai para a MainScreen direto)
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => const MainScreen()),
-                  (route) => false,
-                );
-              },
-              child: const Text("Decidir depois (Pular)"),
-            ),
-          ],
+              // Seleção de Sexo
+              DropdownButtonFormField<String>(
+                initialValue: _selectedGender,
+                decoration: const InputDecoration(
+                  labelText: "Sexo do Bebê",
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.wc),
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'menino',
+                    child: Text("Menino 💙 (Tema Azul)"),
+                  ),
+                  DropdownMenuItem(
+                    value: 'menina',
+                    child: Text("Menina 🩷 (Tema Rosa)"),
+                  ),
+                ],
+                onChanged: (v) => setState(() => _selectedGender = v),
+                hint: const Text("Surpresa / Ainda não sei"),
+              ),
+
+              const SizedBox(height: 40),
+
+              // Botão Salvar
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _saveBabyData,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text("Salvar e Entrar"),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+              TextButton(
+                onPressed: () {
+                  // Pular essa etapa (vai para a MainScreen direto)
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const MainScreen()),
+                    (route) => false,
+                  );
+                },
+                child: const Text("Decidir depois (Pular)"),
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

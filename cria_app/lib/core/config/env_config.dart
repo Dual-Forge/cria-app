@@ -12,9 +12,9 @@ class EnvConfig {
   static String get supabaseUrl => _get('SUPABASE_URL');
   static String get supabaseAnonKey => _get('SUPABASE_ANON_KEY');
 
-  // ── Gemini AI ─────────────────────────────────────────────────────────────
+  // ── Groq AI ───────────────────────────────────────────────────────────────
 
-  static String get geminiApiKey => _get('GEMINI_API_KEY');
+  static String get groqApiKey => _get('GROQ_API_KEY');
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -22,16 +22,18 @@ class EnvConfig {
   static bool get isConfigured =>
       supabaseUrl.isNotEmpty &&
       supabaseAnonKey.isNotEmpty &&
-      geminiApiKey.isNotEmpty;
+      groqApiKey.isNotEmpty;
 
   /// Busca a variável: dart-define tem prioridade sobre .env
   static String _get(String key) {
     // 1. Tenta dart-define (injetado via Vercel / CI --dart-define)
-    final fromDartDefine = _getFromDartDefine(key);
+    final fromDartDefine =
+        _getFromDartDefine(key).trim().replaceAll('"', '').replaceAll("'", '');
     if (fromDartDefine.isNotEmpty) return fromDartDefine;
 
     // 2. Fallback para .env (desenvolvimento local)
-    final fromDotenv = dotenv.env[key] ?? '';
+    final fromDotenv =
+        dotenv.env[key]?.trim().replaceAll('"', '').replaceAll("'", '') ?? '';
     if (fromDotenv.isNotEmpty) return fromDotenv;
 
     debugPrint('[EnvConfig] AVISO: Chave "$key" não encontrada em nenhuma fonte.');
@@ -43,9 +45,12 @@ class EnvConfig {
       case 'SUPABASE_URL':
         return const String.fromEnvironment('SUPABASE_URL', defaultValue: '');
       case 'SUPABASE_ANON_KEY':
-        return const String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
-      case 'GEMINI_API_KEY':
-        return const String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
+        return const String.fromEnvironment(
+          'SUPABASE_ANON_KEY',
+          defaultValue: '',
+        );
+      case 'GROQ_API_KEY':
+        return const String.fromEnvironment('GROQ_API_KEY', defaultValue: '');
       default:
         return '';
     }

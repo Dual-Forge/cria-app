@@ -222,7 +222,7 @@ class _LoginScreenState extends State<LoginScreen>
       await Supabase.instance.client.auth.signInWithOAuth(
         OAuthProvider.google,
         redirectTo: kIsWeb
-            ? 'https://web-jade-ten-51.vercel.app/'
+            ? (Uri.base.origin.contains('localhost') ? Uri.base.origin : 'https://denguinho-mu.vercel.app/')
             : 'io.supabase.flutter://login-callback/',
         authScreenLaunchMode: kIsWeb
             ? LaunchMode.platformDefault

@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -726,8 +728,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           onPressed: () {
                             Clipboard.setData(
                               ClipboardData(
-                                text:
-                                    'https://web-jade-ten-51.vercel.app/presentes/$_familyId',
+                                text: kIsWeb
+                                    ? '${Uri.base.origin}/#/presentes/$_familyId'
+                                    : 'https://denguinho-mu.vercel.app/presentes/$_familyId',
                               ),
                             );
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -884,9 +887,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onTap: () async {
                       await Supabase.instance.client.auth.signOut();
                       if (mounted) {
-                        Navigator.of(
-                          context,
-                        ).popUntil((route) => route.isFirst);
+                        // Limpa o estado e volta para a raiz (AuthGate)
+                        GoRouter.of(context).go('/');
                       }
                     },
                   ),

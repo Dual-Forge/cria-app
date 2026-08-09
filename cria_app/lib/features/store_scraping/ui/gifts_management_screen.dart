@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -163,8 +164,9 @@ class _GiftsManagementScreenState extends State<GiftsManagementScreen> {
               icon: const Icon(Icons.share),
               tooltip: 'Compartilhar Link Público',
               onPressed: () {
-                final link =
-                    'https://web-jade-ten-51.vercel.app/presentes/${widget.familyId}';
+                final link = kIsWeb
+                    ? '${Uri.base.origin}/#/presentes/${widget.familyId}'
+                    : 'https://denguinho-mu.vercel.app/presentes/${widget.familyId}';
                 Clipboard.setData(ClipboardData(text: link));
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(

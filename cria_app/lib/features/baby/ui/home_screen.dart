@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cria_app/features/ai_specialist/services/pregnancy_ai_service.dart';
-import 'package:cria_app/features/ai_specialist/services/gemini_service.dart';
+import 'package:cria_app/features/ai_specialist/services/ai_service.dart';
 import 'package:cria_app/features/ai_specialist/ui/chatbot_screen.dart';
 import 'package:cria_app/widgets/baby_card/baby_card_widget.dart';
 
@@ -32,7 +32,7 @@ class HomePregnancyScreen extends StatefulWidget {
 class _HomePregnancyScreenState extends State<HomePregnancyScreen> {
   // AI Service logic
   final PregnancyAIService _fallbackAiService = PregnancyAIService();
-  final GeminiService _geminiService = GeminiService();
+  final AIService _aiService = AIService();
   List<PregnancyTip> _aiTips = [];
   bool _isLoadingTips = false; // Start false to trigger load in build
   String? _weeklyFocus;
@@ -61,15 +61,14 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen> {
     List<PregnancyTip> tips = [];
     final focus = await _fallbackAiService.getWeeklyFocus(weeks);
 
-    if (_geminiService.isConfigured) {
-      // Coleta dados extras da usuária, se existirem (Padrão para MVP: null)
+    if (_aiService.isConfigured) {
       final userData = {
         'baby_name': widget.babyName ?? '',
         'baby_gender': widget.babyGender ?? '',
         'role': userRole,
       };
 
-      final insights = await _geminiService.getPregnancyInsights(
+      final insights = await _aiService.getPregnancyInsights(
         weeks,
         userData,
       );
@@ -78,7 +77,7 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen> {
           PregnancyTip(
             category: "Corpo",
             content: insights['body'] ?? '',
-            iconEmoji: "🧘‍♀️",
+            iconEmoji: "🧘\u200d♀️",
           ),
           PregnancyTip(
             category: "Nutrição",
@@ -100,7 +99,7 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen> {
             PregnancyTip(
               category: "Movimento",
               content: insights['movement'] ?? '',
-              iconEmoji: "🏃‍♀️",
+              iconEmoji: "🏃\u200d♀️",
             ),
           if (insights['connection']?.isNotEmpty == true)
             PregnancyTip(
@@ -130,9 +129,7 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SafeArea(
-        child: _buildOverviewTab(),
-      ),
+      body: SafeArea(child: _buildOverviewTab()),
     );
   }
 
@@ -162,9 +159,14 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen> {
 
           try {
             momProfile = profiles.firstWhere((p) => p['role'] == 'mae');
-            if (momProfile['dum_date'] != null) {
-              actualDumDate = DateTime.parse(momProfile['dum_date']);
-              currentWeeks = _calculateWeeks(actualDumDate);
+            final rawDum = momProfile['dum_date'];
+            if (rawDum != null && rawDum.toString().trim().isNotEmpty) {
+              try {
+                actualDumDate = DateTime.parse(rawDum.toString().trim());
+                currentWeeks = _calculateWeeks(actualDumDate);
+              } catch (e) {
+                debugPrint('Erro ao parsear dum_date na Home: $e');
+              }
             }
           } catch (_) {}
         }
@@ -209,10 +211,13 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen> {
                       }
                       lastBpm = babyProfile['last_bpm'];
                       kickCount = babyProfile['kick_count'] ?? 0;
-                      if (babyProfile['expected_due_date'] != null) {
-                        expectedDueDate = DateTime.parse(
-                          babyProfile['expected_due_date'],
-                        );
+                      final rawExpected = babyProfile['expected_due_date'];
+                      if (rawExpected != null && rawExpected.toString().trim().isNotEmpty) {
+                        try {
+                          expectedDueDate = DateTime.parse(rawExpected.toString().trim());
+                        } catch (e) {
+                          debugPrint('Erro ao parsear expected_due_date na Home: $e');
+                        }
                       }
                     }
 

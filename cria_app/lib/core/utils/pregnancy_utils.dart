@@ -84,3 +84,28 @@ Map<String, dynamic> getPregnancySummary(DateTime? dumDate) {
     'semanas_restantes': info.weeksRemaining,
   };
 }
+
+/// Calcula a DPP (Data Provável do Parto) baseada na Regra de Naegele.
+DateTime calculateDPP(DateTime dum) {
+  return dum.add(const Duration(days: 280));
+}
+
+/// Determina o signo zodiacal com base na data da DPP.
+Map<String, String> getZodiacSign(DateTime date) {
+  int day = date.day;
+  int month = date.month;
+
+  if ((month == 3 && day >= 21) || (month == 4 && day <= 19)) return {'name': 'Áries', 'emoji': '♈'};
+  if ((month == 4 && day >= 20) || (month == 5 && day <= 20)) return {'name': 'Touro', 'emoji': '♉'};
+  if ((month == 5 && day >= 21) || (month == 6 && day <= 20)) return {'name': 'Gêmeos', 'emoji': '♊'};
+  if ((month == 6 && day >= 21) || (month == 7 && day <= 22)) return {'name': 'Câncer', 'emoji': '♋'};
+  if ((month == 7 && day >= 23) || (month == 8 && day <= 22)) return {'name': 'Leão', 'emoji': '♌'};
+  if ((month == 8 && day >= 23) || (month == 9 && day <= 22)) return {'name': 'Virgem', 'emoji': '♍'};
+  if ((month == 9 && day >= 23) || (month == 10 && day <= 22)) return {'name': 'Libra', 'emoji': '♎'};
+  if ((month == 10 && day >= 23) || (month == 11 && day <= 21)) return {'name': 'Escorpião', 'emoji': '♏'};
+  if ((month == 11 && day >= 22) || (month == 12 && day <= 21)) return {'name': 'Sagitário', 'emoji': '♐'};
+  if ((month == 12 && day >= 22) || (month == 1 && day <= 19)) return {'name': 'Capricórnio', 'emoji': '♑'};
+  if ((month == 1 && day >= 20) || (month == 2 && day <= 18)) return {'name': 'Aquário', 'emoji': '♒'};
+  return {'name': 'Peixes', 'emoji': '♓'};
+}
+

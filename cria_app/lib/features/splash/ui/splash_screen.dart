@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -43,18 +44,32 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _setupRealtimeListener() async {
+    debugPrint('[SplashScreen] _setupRealtimeListener iniciado');
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
-      if (mounted) context.go('/');
+      debugPrint('[SplashScreen] Usuário não logado, redirecionando para /login');
+      // Redireciona para login diretamente — evita loop via '/' → AuthGateScreen → SplashScreen
+      if (mounted) context.go('/login');
       return;
     }
 
+    debugPrint('[SplashScreen] Usuário: ${user.id} — consultando perfil...');
     try {
+      // Timeout de 10s: se a rede travar no Android, não fica em loading infinito
       final profile = await Supabase.instance.client
           .from('profiles')
           .select('family_id')
           .eq('id', user.id)
-          .maybeSingle();
+          .maybeSingle()
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              debugPrint('[SplashScreen] TIMEOUT na consulta de perfil! Continuando sem dados.');
+              return null;
+            },
+          );
+
+      debugPrint('[SplashScreen] Perfil recebido: $profile');
 
       if (profile != null && profile['family_id'] != null) {
         if (mounted) {
@@ -64,7 +79,7 @@ class _SplashScreenState extends State<SplashScreen>
                 .from('families')
                 .stream(primaryKey: ['id'])
                 .eq('id', _familyId!)
-                .map((event) => event.first);
+                .map((event) => event.isNotEmpty ? event.first : <String, dynamic>{});
             _isLoading = false;
           });
         }
@@ -72,6 +87,7 @@ class _SplashScreenState extends State<SplashScreen>
         if (mounted) setState(() => _isLoading = false);
       }
     } catch (e) {
+      debugPrint('[SplashScreen] Erro em _setupRealtimeListener: $e');
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -90,7 +106,7 @@ class _SplashScreenState extends State<SplashScreen>
   ) {
     String nameToDisplay = babyName ?? "seu bebê";
     String textPrefix = "Aguardando a chegada de ";
-    String textSuffix = ".";
+    String textSuffix = "";
     bool isBorn = false;
 
     if (actualDumDate != null) {
@@ -100,10 +116,10 @@ class _SplashScreenState extends State<SplashScreen>
       if (daysRemaining > 0) {
         textPrefix =
             "Faltam aproximadamente $daysRemaining dias para a chegada de ";
-        textSuffix = ".";
+        textSuffix = "";
       } else if (daysRemaining == 0) {
         textPrefix = "É hoje! O grande dia da chegada de ";
-        textSuffix = ".";
+        textSuffix = "";
       } else {
         isBorn = true;
         textPrefix = "";
@@ -117,64 +133,52 @@ class _SplashScreenState extends State<SplashScreen>
         builder: (context, child) {
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: RichText(
-              textAlign: TextAlign.center,
-              text: TextSpan(
-                style: GoogleFonts.petitFormalScript(
-                  fontSize: 26,
-                  color: const Color(0xFF2D3142),
-                ),
-                children: [
-                  if (isBorn) ...[
-                    WidgetSpan(
-                      alignment: PlaceholderAlignment.baseline,
-                      baseline: TextBaseline.alphabetic,
-                      child: Transform.scale(
-                        scale: _heartScale.value,
-                        child: Text(
-                          nameToDisplay,
-                          style: GoogleFonts.petitFormalScript(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: themeColor,
-                            shadows: [
-                              Shadow(
-                                color: themeColor.withValues(alpha: 0.5),
-                                blurRadius: 10 * _heartScale.value,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (textPrefix.isNotEmpty) ...[
+                  Text(
+                    textPrefix,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.petitFormalScript(
+                      fontSize: 26,
+                      color: const Color(0xFF2D3142),
+                      height: 1.3,
                     ),
-                    TextSpan(text: textSuffix),
-                  ] else ...[
-                    TextSpan(text: textPrefix),
-                    WidgetSpan(
-                      alignment: PlaceholderAlignment.baseline,
-                      baseline: TextBaseline.alphabetic,
-                      child: Transform.scale(
-                        scale: _heartScale.value,
-                        child: Text(
-                          nameToDisplay,
-                          style: GoogleFonts.petitFormalScript(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: themeColor,
-                            shadows: [
-                              Shadow(
-                                color: themeColor.withValues(alpha: 0.5),
-                                blurRadius: 10 * _heartScale.value,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    TextSpan(text: textSuffix),
-                  ],
+                  ),
+                  const SizedBox(height: 12),
                 ],
-              ),
+                Transform.scale(
+                  scale: _heartScale.value,
+                  child: Text(
+                    nameToDisplay,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.petitFormalScript(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: themeColor,
+                      shadows: [
+                        Shadow(
+                          color: themeColor.withValues(alpha: 0.5),
+                          blurRadius: 10 * _heartScale.value,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (textSuffix.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    textSuffix,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.petitFormalScript(
+                      fontSize: 26,
+                      color: const Color(0xFF2D3142),
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ],
             ),
           );
         },

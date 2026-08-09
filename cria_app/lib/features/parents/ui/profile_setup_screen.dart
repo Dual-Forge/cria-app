@@ -197,214 +197,218 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            // --- 1. FOTO DE PERFIL ---
-            GestureDetector(
-              onTap: _pickImage,
-              child: Stack(
-                alignment: Alignment.bottomRight,
-                children: [
-                  Container(
-                    width: 110,
-                    height: 110,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: themeColor.withOpacity(0.5),
-                        width: 2,
+          child: Column(
+            children: [
+              // --- 1. FOTO DE PERFIL ---
+              GestureDetector(
+                onTap: _pickImage,
+                child: Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    Container(
+                      width: 110,
+                      height: 110,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: themeColor.withOpacity(0.5),
+                          width: 2,
+                        ),
+                        image: (_webImageBytes != null)
+                            ? DecorationImage(
+                                image: MemoryImage(_webImageBytes!),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
                       ),
-                      image: (_webImageBytes != null)
-                          ? DecorationImage(
-                              image: MemoryImage(_webImageBytes!),
-                              fit: BoxFit.cover,
+                      child: (_webImageBytes == null)
+                          ? Icon(
+                              Icons.person_add,
+                              size: 50,
+                              color: Colors.grey[400],
                             )
                           : null,
                     ),
-                    child: (_webImageBytes == null)
-                        ? Icon(
-                            Icons.person_add,
-                            size: 50,
-                            color: Colors.grey[400],
-                          )
-                        : null,
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: themeColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.camera_alt,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              "Toque para adicionar foto",
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
-            ),
-
-            const SizedBox(height: 30),
-
-            // --- 2. DADOS PESSOAIS ---
-            _buildSectionTitle("Sobre Você"),
-
-            TextField(
-              controller: _fullNameController,
-              decoration: _inputDecoration("Nome Completo", Icons.person),
-            ),
-            const SizedBox(height: 15),
-
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _nicknameController,
-                    decoration: _inputDecoration("Apelido", Icons.face),
-                  ),
-                ),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _selectedRole,
-                    decoration: _inputDecoration("Sou...", Icons.people),
-                    items: const [
-                      DropdownMenuItem(value: 'mae', child: Text("Mamãe")),
-                      DropdownMenuItem(value: 'pai', child: Text("Papai")),
-                    ],
-                    onChanged: (v) => setState(() => _selectedRole = v!),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 15),
-
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _birthDateController,
-                    readOnly: true,
-                    decoration: _inputDecoration(
-                      "Nascimento",
-                      Icons.calendar_today,
-                    ),
-                    onTap: () async {
-                      DateTime? picked = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime(1995),
-                        firstDate: DateTime(1950),
-                        lastDate: DateTime.now(),
-                      );
-                      if (picked != null) {
-                        setState(() {
-                          _selectedDate = picked;
-                          _birthDateController.text = DateFormat(
-                            'dd/MM/yyyy',
-                          ).format(picked);
-                        });
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _selectedBloodType,
-                    decoration: _inputDecoration("Sangue", Icons.water_drop),
-                    items: _bloodTypes
-                        .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                        .toList(),
-                    onChanged: (v) => setState(() => _selectedBloodType = v),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 30),
-
-            // --- 3. FAMÍLIA ---
-            _buildSectionTitle("Sua Família"),
-            Container(
-              padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Column(
-                children: [
-                  RadioListTile<bool>(
-                    title: const Text("Criar nova família"),
-                    subtitle: const Text("Primeira pessoa a baixar"),
-                    value: false,
-                    groupValue: _isJoiningFamily,
-                    activeColor: themeColor,
-                    onChanged: (val) => setState(() => _isJoiningFamily = val!),
-                  ),
-                  RadioListTile<bool>(
-                    title: const Text("Entrar em família"),
-                    subtitle: const Text("Tenho um código de convite"),
-                    value: true,
-                    groupValue: _isJoiningFamily,
-                    activeColor: themeColor,
-                    onChanged: (val) => setState(() => _isJoiningFamily = val!),
-                  ),
-
-                  if (_isJoiningFamily)
-                    Padding(
-                      padding: const EdgeInsets.all(15),
-                      child: TextField(
-                        controller: _inviteCodeController,
-                        textCapitalization: TextCapitalization.characters,
-                        decoration: _inputDecoration(
-                          "Código da Família (6 letras)",
-                          Icons.key,
-                        ).copyWith(filled: true, fillColor: Colors.white),
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: themeColor,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt,
+                        color: Colors.white,
+                        size: 18,
                       ),
                     ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                "Toque para adicionar foto",
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
+
+              const SizedBox(height: 30),
+
+              // --- 2. DADOS PESSOAIS ---
+              _buildSectionTitle("Sobre Você"),
+
+              TextField(
+                controller: _fullNameController,
+                decoration: _inputDecoration("Nome Completo", Icons.person),
+              ),
+              const SizedBox(height: 15),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _nicknameController,
+                      decoration: _inputDecoration("Apelido", Icons.face),
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _selectedRole,
+                      decoration: _inputDecoration("Sou...", Icons.people),
+                      items: const [
+                        DropdownMenuItem(value: 'mae', child: Text("Mamãe")),
+                        DropdownMenuItem(value: 'pai', child: Text("Papai")),
+                      ],
+                      onChanged: (v) => setState(() => _selectedRole = v!),
+                    ),
+                  ),
                 ],
               ),
-            ),
+              const SizedBox(height: 15),
 
-            const SizedBox(height: 30),
-
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _submit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: themeColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _birthDateController,
+                      readOnly: true,
+                      decoration: _inputDecoration(
+                        "Nascimento",
+                        Icons.calendar_today,
+                      ),
+                      onTap: () async {
+                        DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime(1995),
+                          firstDate: DateTime(1950),
+                          lastDate: DateTime.now(),
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            _selectedDate = picked;
+                            _birthDateController.text = DateFormat(
+                              'dd/MM/yyyy',
+                            ).format(picked);
+                          });
+                        }
+                      },
+                    ),
                   ),
-                  elevation: 5,
-                  shadowColor: themeColor.withOpacity(0.4),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _selectedBloodType,
+                      decoration: _inputDecoration("Sangue", Icons.water_drop),
+                      items: _bloodTypes
+                          .map(
+                            (t) => DropdownMenuItem(value: t, child: Text(t)),
+                          )
+                          .toList(),
+                      onChanged: (v) => setState(() => _selectedBloodType = v),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 30),
+
+              // --- 3. FAMÍLIA ---
+              _buildSectionTitle("Sua Família"),
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: Colors.grey.shade200),
                 ),
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                        "Finalizar Cadastro",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                child: Column(
+                  children: [
+                    RadioListTile<bool>(
+                      title: const Text("Criar nova família"),
+                      subtitle: const Text("Primeira pessoa a baixar"),
+                      value: false,
+                      groupValue: _isJoiningFamily,
+                      activeColor: themeColor,
+                      onChanged: (val) =>
+                          setState(() => _isJoiningFamily = val!),
+                    ),
+                    RadioListTile<bool>(
+                      title: const Text("Entrar em família"),
+                      subtitle: const Text("Tenho um código de convite"),
+                      value: true,
+                      groupValue: _isJoiningFamily,
+                      activeColor: themeColor,
+                      onChanged: (val) =>
+                          setState(() => _isJoiningFamily = val!),
+                    ),
+
+                    if (_isJoiningFamily)
+                      Padding(
+                        padding: const EdgeInsets.all(15),
+                        child: TextField(
+                          controller: _inviteCodeController,
+                          textCapitalization: TextCapitalization.characters,
+                          decoration: _inputDecoration(
+                            "Código da Família (6 letras)",
+                            Icons.key,
+                          ).copyWith(filled: true, fillColor: Colors.white),
                         ),
                       ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 30),
-          ],
+
+              const SizedBox(height: 30),
+
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: themeColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    elevation: 5,
+                    shadowColor: themeColor.withOpacity(0.4),
+                  ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          "Finalizar Cadastro",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 30),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

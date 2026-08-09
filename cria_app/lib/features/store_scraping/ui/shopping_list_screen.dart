@@ -519,11 +519,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                       const SizedBox(width: 10),
                       Text(
                         "Categorias",
-                        style: TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w800,
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
                           color: const Color(0xFF2D3142),
-                          letterSpacing: -0.3,
                         ),
                       ),
                     ],
@@ -2007,7 +2005,15 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
               (i) => i['age_range'] == widget.ageFilter,
             );
           }
-          return filtered.toList();
+          final list = filtered.toList();
+          list.sort((a, b) {
+            final aP = a['is_purchased'] == true;
+            final bP = b['is_purchased'] == true;
+            if (aP && !bP) return 1;
+            if (!aP && bP) return -1;
+            return 0;
+          });
+          return list;
         }),
 
         builder: (context, snapshot) {
@@ -2085,8 +2091,14 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                 ),
               ),
               Expanded(
-                child: ListView.builder(
+                child: GridView.builder(
                   padding: const EdgeInsets.all(16),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12.0,
+                    mainAxisSpacing: 12.0,
+                    childAspectRatio: 0.72,
+                  ),
                   itemCount: items.length,
                   itemBuilder: (context, index) {
                     final item = items[index];
@@ -2095,11 +2107,9 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                     return GestureDetector(
                       onTap: () => _openItemDetails(context, item),
                       child: Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           color: isPurchased ? Colors.grey[50] : Colors.white,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(18),
                           border: isPurchased
                               ? Border.all(color: Colors.grey.shade200)
                               : Border.all(color: Colors.transparent),
@@ -2107,188 +2117,235 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                               ? []
                               : [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.04),
-                                    blurRadius: 10,
+                                    color: Colors.black.withOpacity(0.06),
+                                    blurRadius: 12,
                                     offset: const Offset(0, 4),
                                   ),
                                 ],
                         ),
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // 1. Imagem Principal
-                            Hero(
-                              tag: 'item_${item['id']}',
-                              child: Container(
-                                width: 70,
-                                height: 70,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  color: Colors.grey[100],
-                                ),
-                                child: item['image_url'] != null
-                                    ? ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: ColorFiltered(
-                                          colorFilter: isPurchased
-                                              ? const ColorFilter.mode(
-                                                  Colors.grey,
-                                                  BlendMode.saturation,
-                                                )
-                                              : const ColorFilter.mode(
-                                                  Colors.transparent,
-                                                  BlendMode.multiply,
-                                                ),
-                                          child: Image.network(
-                                            item['image_url'],
-                                            width: 70,
-                                            height: 70,
-                                            fit: BoxFit.cover,
-                                            cacheWidth: 200,
-                                            errorBuilder:
-                                                (
+                            // --- TOPO: Imagem com Checkbox Absoluto ---
+                            Stack(
+                              children: [
+                                // Imagem
+                                Hero(
+                                  tag: 'item_${item['id']}',
+                                  child: ClipRRect(
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(18),
+                                    ),
+                                    child: ColorFiltered(
+                                      colorFilter: isPurchased
+                                          ? const ColorFilter.mode(
+                                              Colors.grey,
+                                              BlendMode.saturation,
+                                            )
+                                          : const ColorFilter.mode(
+                                              Colors.transparent,
+                                              BlendMode.multiply,
+                                            ),
+                                      child: Container(
+                                        height: 110,
+                                        width: double.infinity,
+                                        color: Colors.grey[100],
+                                        child: item['image_url'] != null
+                                            ? Image.network(
+                                                item['image_url'],
+                                                height: 110,
+                                                width: double.infinity,
+                                                fit: BoxFit.contain,
+                                                cacheWidth: 300,
+                                                errorBuilder: (
                                                   context,
                                                   error,
                                                   stackTrace,
-                                                ) => Icon(
-                                                  Icons.shopping_bag_outlined,
-                                                  color: Colors.grey[400],
-                                                  size: 30,
-                                                ),
-                                          ),
-                                        ),
-                                      )
-                                    : Icon(
-                                        Icons.shopping_bag_outlined,
-                                        color: Colors.grey[400],
-                                        size: 30,
+                                                ) =>
+                                                    Icon(
+                                                      Icons
+                                                          .shopping_bag_outlined,
+                                                      color: Colors.grey[300],
+                                                      size: 40,
+                                                    ),
+                                              )
+                                            : Icon(
+                                                Icons.shopping_bag_outlined,
+                                                color: Colors.grey[300],
+                                                size: 40,
+                                              ),
                                       ),
-                              ),
-                            ),
-                            const SizedBox(width: 15),
-
-                            // 2. Detalhes
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    item['name'],
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: isPurchased
-                                          ? Colors.grey[500]
-                                          : Colors.grey[800],
-                                      decoration: isPurchased
-                                          ? TextDecoration.lineThrough
+                                    ),
+                                  ),
+                                ),
+                                // Checkbox no canto superior direito
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: GestureDetector(
+                                    onTap: () =>
+                                        _toggleItem(item['id'], isPurchased),
+                                    child: AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 200),
+                                      width: 28,
+                                      height: 28,
+                                      decoration: BoxDecoration(
+                                        color: isPurchased
+                                            ? widget.themeColor
+                                            : Colors.white.withOpacity(0.85),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: isPurchased
+                                              ? widget.themeColor
+                                              : Colors.grey.shade300,
+                                          width: 2,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color:
+                                                Colors.black.withOpacity(0.1),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: isPurchased
+                                          ? const Icon(
+                                              Icons.check,
+                                              size: 15,
+                                              color: Colors.white,
+                                            )
                                           : null,
                                     ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  const SizedBox(height: 6),
-                                  Row(
-                                    children: [
-                                      if (item['age_range'] != null &&
-                                          item['age_range'] != 'Todos')
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 2,
-                                          ),
-                                          margin: const EdgeInsets.only(
-                                            right: 8,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: isPurchased
-                                                ? Colors.grey[200]
-                                                : widget.themeColor.withOpacity(
-                                                    0.1,
-                                                  ),
-                                            borderRadius: BorderRadius.circular(
-                                              6,
+                                ),
+                                // Ícone de presente no canto superior esquerdo
+                                if (!isPurchased)
+                                  Positioned(
+                                    top: 4,
+                                    left: 4,
+                                    child: GestureDetector(
+                                      onTap: () => _toggleGiftStatus(
+                                        item['id'],
+                                        item['is_gift'] == true,
+                                      ),
+                                      child: Container(
+                                        width: 28,
+                                        height: 28,
+                                        decoration: BoxDecoration(
+                                          color:
+                                              Colors.white.withOpacity(0.85),
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black
+                                                  .withOpacity(0.1),
+                                              blurRadius: 4,
                                             ),
-                                          ),
-                                          child: Text(
-                                            item['age_range'],
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                              color: isPurchased
-                                                  ? Colors.grey[600]
-                                                  : widget.themeColor,
-                                            ),
-                                          ),
+                                          ],
                                         ),
-                                      Text(
-                                        item['price'] != null
-                                            ? "R\$ ${item['price']}"
-                                            : "Preço não def.",
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: isPurchased
-                                              ? Colors.grey[400]
-                                              : (item['price'] != null
-                                                    ? Colors.green[700]
-                                                    : Colors.grey[400]),
+                                        child: Icon(
+                                          item['is_gift'] == true
+                                              ? Icons.card_giftcard
+                                              : Icons.card_giftcard_outlined,
+                                          size: 16,
+                                          color: item['is_gift'] == true
+                                              ? widget.themeColor
+                                              : Colors.grey[400],
                                         ),
                                       ),
-                                    ],
+                                    ),
                                   ),
-                                ],
-                              ),
+                              ],
                             ),
 
-                            // 3. Botão de Presente Público (Se não comprado)
-                            if (!isPurchased)
-                              IconButton(
-                                icon: Icon(
-                                  item['is_gift'] == true
-                                      ? Icons.card_giftcard
-                                      : Icons.card_giftcard_outlined,
-                                  color: item['is_gift'] == true
-                                      ? widget.themeColor
-                                      : Colors.grey[400],
-                                ),
-                                onPressed: () => _toggleGiftStatus(
-                                  item['id'],
-                                  item['is_gift'] == true,
-                                ),
-                                tooltip: item['is_gift'] == true
-                                    ? "Na lista de presentes"
-                                    : "Disponibilizar como presente",
-                              ),
+                            // --- CORPO: Textos ---
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    // Nome do produto
+                                    Text(
+                                      item['name'] ?? '',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: isPurchased
+                                            ? Colors.grey[400]
+                                            : Colors.grey[800],
+                                        decoration: isPurchased
+                                            ? TextDecoration.lineThrough
+                                            : null,
+                                        height: 1.3,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
 
-                            const SizedBox(width: 8),
-
-                            // 4. Checkbox Customizado
-                            GestureDetector(
-                              onTap: () => _toggleItem(item['id'], isPurchased),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  color: isPurchased
-                                      ? widget.themeColor.withOpacity(0.2)
-                                      : Colors.transparent,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: isPurchased
-                                        ? widget.themeColor
-                                        : Colors.grey.shade300,
-                                    width: 2,
-                                  ),
+                                    // --- RODAPÉ: Tag + Preço ---
+                                    Row(
+                                      children: [
+                                        if (item['age_range'] != null &&
+                                            item['age_range'] != 'Todos')
+                                          Flexible(
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 2,
+                                                  ),
+                                              margin: const EdgeInsets.only(
+                                                right: 6,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: isPurchased
+                                                    ? Colors.grey[200]
+                                                    : widget.themeColor
+                                                        .withOpacity(0.12),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                item['age_range'],
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isPurchased
+                                                      ? Colors.grey[500]
+                                                      : widget.themeColor,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ),
+                                        Flexible(
+                                          child: Text(
+                                            item['price'] != null
+                                                ? "R\$ ${item['price']}"
+                                                : "—",
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold,
+                                              color: isPurchased
+                                                  ? Colors.grey[400]
+                                                  : (item['price'] != null
+                                                        ? Colors.green[700]
+                                                        : Colors.grey[400]),
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
-                                child: isPurchased
-                                    ? Icon(
-                                        Icons.check,
-                                        size: 16,
-                                        color: widget.themeColor,
-                                      )
-                                    : null,
                               ),
                             ),
                           ],

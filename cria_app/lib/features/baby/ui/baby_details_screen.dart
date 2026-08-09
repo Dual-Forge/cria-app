@@ -4,6 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
 import 'package:cria_app/features/baby/services/baby_data.dart';
+import 'package:cria_app/core/utils/pregnancy_utils.dart' as preg_utils;
 
 class BabyDetailsScreen extends StatefulWidget {
   final String? profilePhotoUrl;
@@ -221,12 +222,16 @@ class _BabyDetailsScreenState extends State<BabyDetailsScreen> with TickerProvid
                 child: Icon(Icons.child_care, size: 18, color: Colors.pinkAccent),
               ),
             const SizedBox(width: 8),
-            Text(
-              'Informações da ${widget.babyName}',
-              style: TextStyle(
-                color: _pinkColor,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+            Flexible(
+              child: Text(
+                'Informações da ${widget.babyName}',
+                style: TextStyle(
+                  color: _pinkColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -317,21 +322,62 @@ class _BabyDetailsScreenState extends State<BabyDetailsScreen> with TickerProvid
             ),
           ),
           const SizedBox(height: 4),
-          Row(
+        () {
+        DateTime? dpp;
+        Map<String, String>? zodiacSignInfo;
+        try {
+          if (widget.dumDate != null) {
+            dpp = preg_utils.calculateDPP(widget.dumDate!);
+            zodiacSignInfo = preg_utils.getZodiacSign(dpp);
+          } else if (widget.expectedDueDate != null) {
+            dpp = widget.expectedDueDate;
+            zodiacSignInfo = preg_utils.getZodiacSign(dpp!);
+          }
+        } catch (e) {
+          debugPrint('Erro ao computar DPP/Signo em Detalhes: $e');
+        }
+
+        if (dpp != null && zodiacSignInfo != null) {
+          return Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.star_border, size: 14, color: Colors.deepPurple),
-              const SizedBox(width: 4),
               Text(
-                'Áries', // Podemos tornar dinâmico com ZodiacBadge se necessário
+                '${zodiacSignInfo['emoji']} ${zodiacSignInfo['name']}',
                 style: const TextStyle(
                   color: Colors.deepPurple,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
               ),
+              const SizedBox(width: 8),
+              Text(
+                '•  Previsão: ${dpp.day.toString().padLeft(2, '0')}/${dpp.month.toString().padLeft(2, '0')}/${dpp.year}',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                ),
+              ),
             ],
-          ),
+          );
+        }
+
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.star_border, size: 14, color: Colors.deepPurple),
+            const SizedBox(width: 4),
+            Text(
+              'Signo Indefinido',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        );
+      }(),
           const SizedBox(height: 24),
           Row(
             children: [

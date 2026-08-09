@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -16,81 +18,200 @@ import 'package:cria_app/features/baby/ui/baby_details_screen.dart';
 import 'package:cria_app/features/store_scraping/ui/public_registry_screen.dart';
 import 'package:cria_app/features/splash/ui/splash_screen.dart';
 import 'package:cria_app/features/parents/ui/main_screen.dart';
+import 'package:cria_app/features/parents/ui/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
-  setPathUrlStrategy();
+
+  // Carrega o .env — tenta o nome raiz primeiro (declarado como asset no pubspec)
+  bool envLoaded = false;
+  for (final fileName in ['.env', 'assets/.env']) {
+    try {
+      await dotenv.load(fileName: fileName);
+      envLoaded = true;
+      debugPrint('[main] .env carregado via "$fileName"');
+      break;
+    } catch (_) {}
+  }
+  if (!envLoaded) {
+    debugPrint('[main] .env não encontrado — usando dart-define.');
+  }
+
+  // url_strategy é exclusivo da Web
+  if (kIsWeb) {
+    setPathUrlStrategy();
+  }
+
   await initializeDateFormatting('pt_BR', null);
 
+  final supabaseUrl = EnvConfig.supabaseUrl;
+  final supabaseAnonKey = EnvConfig.supabaseAnonKey;
+
+  if (supabaseUrl.isEmpty || supabaseAnonKey.isEmpty) {
+    debugPrint('[main] ERRO: credenciais Supabase não configuradas!');
+    runApp(const _ConfigErrorApp());
+    return;
+  }
+
   await Supabase.initialize(
-    url: EnvConfig.supabaseUrl,
-    anonKey: EnvConfig.supabaseAnonKey,
+    url: supabaseUrl,
+    anonKey: supabaseAnonKey,
   );
 
-  runApp(CriaApp());
+  runApp(const CriaApp());
 }
 
-class CriaApp extends StatelessWidget {
-  CriaApp({super.key});
+// ─────────────────────────────────────────────
+// SupabaseAuthNotifier — ChangeNotifier que escuta o stream de auth
+// e notifica o GoRouter via refreshListenable.
+// Isso elimina race conditions de chamar _router.go() antes do router existir.
+// ─────────────────────────────────────────────
+class SupabaseAuthNotifier extends ChangeNotifier {
+  late final StreamSubscription<AuthState> _sub;
+  Session? _session;
 
-  final GoRouter _router = GoRouter(
-    initialLocation: '/splash',
-    routes: [
-      GoRoute(
-        path: '/splash',
-        builder: (context, state) => const SplashScreen(),
-      ),
-      GoRoute(path: '/', builder: (context, state) => const AuthGateScreen()),
-      GoRoute(path: '/home', builder: (context, state) => const MainScreen()),
+  SupabaseAuthNotifier() {
+    // Lê a sessão atual de forma síncrona (pode já estar disponível)
+    _session = Supabase.instance.client.auth.currentSession;
 
-      // 1. ROTA PÚBLICA (Vitrine) - O link que os pais compartilham
-      GoRoute(
-        path: '/presentes/:id',
-        builder: (context, state) {
-          final familyId = state.pathParameters['id']!;
-          return PublicRegistryScreen(familyId: familyId); // Abre a nova tela!
-        },
-      ),
+    _sub = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      debugPrint('[Auth] Evento: ${data.event} | session: ${data.session?.user.id}');
+      _session = data.session;
+      notifyListeners(); // dispara o redirect do GoRouter automaticamente
+    });
+  }
 
-      // Baby Details Route
-      GoRoute(
-        path: '/baby-details',
-        builder: (context, state) {
-          final extra = state.extra as Map<String, dynamic>? ?? {};
-          return BabyDetailsScreen(
-            profilePhotoUrl: extra['profilePhotoUrl'],
-            lastBpm: extra['lastBpm'],
-            expectedDueDate: extra['expectedDueDate'],
-            dumDate: extra['dumDate'],
-            kickCount: extra['kickCount'] ?? 0,
-            babyName: extra['babyName'] ?? 'Bebê',
-            familyId: extra['familyId'] ?? '',
-            themeColor: extra['themeColor'] ?? Colors.pink,
-          );
-        },
-      ),
+  Session? get session => _session;
+  bool get isLoggedIn => _session != null;
 
-      // 2. ROTA DE PAGAMENTO (Checkout) - Oculta, acessada após escolher o presente
-      GoRoute(
-        path: '/checkout/:id',
-        builder: (context, state) {
-          final familyId = state.pathParameters['id']!;
-          final paymentService = PaymentService(Supabase.instance.client);
+  @override
+  void dispose() {
+    _sub.cancel();
+    super.dispose();
+  }
+}
 
-          // Pega o item que o usuário selecionou na tela anterior
-          final selectedItems =
-              state.extra as List<Map<String, dynamic>>? ?? [];
+// ─────────────────────────────────────────────
+// CriaApp
+// ─────────────────────────────────────────────
+class CriaApp extends StatefulWidget {
+  const CriaApp({super.key});
 
-          return WebGiftScreen(
-            familyId: familyId,
-            paymentService: paymentService,
-            selectedItems: selectedItems, // Envia para o Mercado Pago!
-          );
-        },
-      ),
-    ],
-  );
+  @override
+  State<CriaApp> createState() => _CriaAppState();
+}
+
+class _CriaAppState extends State<CriaApp> {
+  late final SupabaseAuthNotifier _authNotifier;
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _authNotifier = SupabaseAuthNotifier();
+
+    _router = GoRouter(
+      // Sempre inicia em '/'. O redirect decide para onde ir com base na sessão.
+      initialLocation: '/',
+
+      // refreshListenable: o router reavalia o redirect automaticamente
+      // sempre que o auth muda — sem _router.go() manual e sem race conditions.
+      refreshListenable: _authNotifier,
+
+      redirect: (context, state) {
+        final isLoggedIn = _authNotifier.isLoggedIn;
+        final location = state.matchedLocation;
+
+        debugPrint('[Router] redirect → isLoggedIn=$isLoggedIn, location=$location');
+
+        final publicRoutes = ['/login'];
+        final isPublic = publicRoutes.contains(location) ||
+            location.startsWith('/presentes/');
+
+        // Se não logado e tentando acessar rota protegida → login
+        if (!isLoggedIn && !isPublic) {
+          return '/login';
+        }
+
+        // Se logado e na tela de login → home
+        if (isLoggedIn && location == '/login') {
+          return '/';
+        }
+
+        return null;
+      },
+
+      routes: [
+        GoRoute(
+          path: '/login',
+          builder: (context, state) => const LoginScreen(),
+        ),
+        GoRoute(
+          path: '/splash',
+          builder: (context, state) => const SplashScreen(),
+        ),
+        GoRoute(
+          path: '/',
+          builder: (context, state) => const AuthGateScreen(),
+        ),
+        GoRoute(
+          path: '/home',
+          builder: (context, state) => const MainScreen(),
+        ),
+
+        // Rota pública: vitrine de presentes
+        GoRoute(
+          path: '/presentes/:id',
+          builder: (context, state) {
+            final familyId = state.pathParameters['id']!;
+            return PublicRegistryScreen(familyId: familyId);
+          },
+        ),
+
+        // Baby Details
+        GoRoute(
+          path: '/baby-details',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            return BabyDetailsScreen(
+              profilePhotoUrl: extra['profilePhotoUrl'],
+              lastBpm: extra['lastBpm'],
+              expectedDueDate: extra['expectedDueDate'],
+              dumDate: extra['dumDate'],
+              kickCount: extra['kickCount'] ?? 0,
+              babyName: extra['babyName'] ?? 'Bebê',
+              familyId: extra['familyId'] ?? '',
+              themeColor: extra['themeColor'] ?? Colors.pink,
+            );
+          },
+        ),
+
+        // Checkout
+        GoRoute(
+          path: '/checkout/:id',
+          builder: (context, state) {
+            final familyId = state.pathParameters['id']!;
+            final paymentService = PaymentService(Supabase.instance.client);
+            final selectedItems =
+                state.extra as List<Map<String, dynamic>>? ?? [];
+            return WebGiftScreen(
+              familyId: familyId,
+              paymentService: paymentService,
+              selectedItems: selectedItems,
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  @override
+  void dispose() {
+    _authNotifier.dispose();
+    _router.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,9 +219,6 @@ class CriaApp extends StatelessWidget {
       title: 'Cria',
       debugShowCheckedModeBanner: false,
       routerConfig: _router,
-      // Aplica o background global UMA vez, por trás de toda a navegação.
-      // GlobalBackgroundWrapper aceita child nullable e usa SizedBox.shrink()
-      // como fallback durante a inicialização do GoRouter no Web.
       builder: (context, child) => GlobalBackgroundWrapper(child: child),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple),
@@ -123,6 +241,49 @@ class CriaApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: const [Locale('pt', 'BR')],
+    );
+  }
+}
+
+/// Exibida quando as credenciais do Supabase não estão configuradas.
+class _ConfigErrorApp extends StatelessWidget {
+  const _ConfigErrorApp();
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: const Color(0xFFFFF0F5),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.redAccent, size: 64),
+                const SizedBox(height: 16),
+                const Text(
+                  'Configuração Incompleta',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2D3142),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'As variáveis SUPABASE_URL e SUPABASE_ANON_KEY não foram encontradas.\n\n'
+                  'Verifique se o arquivo .env está presente e configurado corretamente.',
+                  style: TextStyle(fontSize: 14, color: Colors.black54),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

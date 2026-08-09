@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_screen.dart';
@@ -5,15 +6,29 @@ import 'main_screen.dart';
 import 'profile_setup_screen.dart'; // Certifique-se de que esta tela existe
 import '../../splash/ui/splash_screen.dart';
 
-class AuthGateScreen extends StatelessWidget {
+class AuthGateScreen extends StatefulWidget {
   const AuthGateScreen({super.key});
+
+  @override
+  State<AuthGateScreen> createState() => _AuthGateScreenState();
+}
+
+class _AuthGateScreenState extends State<AuthGateScreen> {
+  // Checagem síncrona inicial — evita loading infinito no Android
+  // onde o stream onAuthStateChange pode demorar para emitir.
+  Session? _currentSession = Supabase.instance.client.auth.currentSession;
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<AuthState>(
       stream: Supabase.instance.client.auth.onAuthStateChange,
       builder: (context, snapshot) {
-        final session = snapshot.data?.session;
+        // Atualiza com dados do stream quando disponível
+        if (snapshot.hasData) {
+          _currentSession = snapshot.data!.session;
+        }
+
+        final session = _currentSession;
 
         // 1. Se NÃO está logado, vai para o Login
         if (session == null) {
@@ -26,8 +41,16 @@ class AuthGateScreen extends StatelessWidget {
               .from('profiles')
               .select()
               .eq('id', session.user.id)
-              .maybeSingle(),
+              .maybeSingle()
+              .timeout(
+                const Duration(seconds: 10),
+                onTimeout: () {
+                  debugPrint('[AuthGate] TIMEOUT na query de perfil!');
+                  return null;
+                },
+              ),
           builder: (context, profileSnapshot) {
+            debugPrint('[AuthGate] profileSnapshot state: ${profileSnapshot.connectionState}');
             // Enquanto checa o banco, mostra um carregamento
             if (profileSnapshot.connectionState == ConnectionState.waiting) {
               return const Scaffold(

@@ -6,6 +6,7 @@ import 'zodiac_badge_widget.dart';
 import 'trimestre_progress_bar.dart';
 import 'kick_counter_button.dart';
 import 'package:cria_app/features/baby/services/baby_data.dart';
+import 'package:cria_app/core/utils/pregnancy_utils.dart' as preg_utils;
 
 class SizeAndWeightDisplayWidget extends StatelessWidget {
   final DateTime? dumDate;
@@ -120,10 +121,18 @@ class BabyCardWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     int weeks = 0;
-    if (dumDate != null) {
-      final diff = DateTime.now().difference(dumDate!);
-      weeks = (diff.inDays / 7).floor();
-      if (weeks < 0) weeks = 0;
+    DateTime? dpp;
+    
+    try {
+      if (dumDate != null) {
+        final diff = DateTime.now().difference(dumDate!);
+        weeks = (diff.inDays / 7).floor();
+        if (weeks < 0) weeks = 0;
+        
+        dpp = preg_utils.calculateDPP(dumDate!);
+      }
+    } catch (e) {
+      debugPrint('Erro ao processar DUM/weeks no Card: $e');
     }
 
     return Material(
@@ -180,44 +189,159 @@ class BabyCardWidget extends StatelessWidget {
                         color: Color(0xFF2D3142),
                       ),
                     ),
-                    const SizedBox(height: 2),
                     Text(
                       'Semana $weeks',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 13,
                         color: Colors.grey[600],
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    
-                    // Signo e Registro de Chute
-                    Row(
-                      children: [
-                        if (showZodiac)
-                          ZodiacBadgeWidget(
-                            expectedDueDate: expectedDueDate,
-                            themeColor: themeColor,
-                            emojiSize: 14,
-                            textSize: 12,
-                          ),
-                        const SizedBox(width: 8),
-                        KickCounterCompactButton(
+                    const SizedBox(height: 2),
+                    () {
+                      DateTime? dppDate = dpp ?? expectedDueDate;
+                      if (dppDate == null) return const SizedBox.shrink();
+                      try {
+                        final zodiac = preg_utils.getZodiacSign(dppDate);
+                        return Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 6,
+                          runSpacing: 2,
+                          children: [
+                            Text(
+                              '${zodiac['emoji']} ${zodiac['name']}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: themeColor,
+                              ),
+                            ),
+                            Text(
+                              '•  Previsão: ${dppDate.day.toString().padLeft(2, '0')}/${dppDate.month.toString().padLeft(2, '0')}/${dppDate.year}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        );
+                      } catch (e) {
+                        debugPrint('Erro ao calcular signo/dpp no Card: $e');
+                        return const SizedBox.shrink();
+                      }
+                    }(),
+
+                    // Relatório de Saúde (Métricas de Saúde triplo)
+                    const SizedBox(height: 12),
+                    () {
+                      if (dumDate == null) {
+                        return KickCounterCompactButton(
                           kickCount: kickCount,
                           babyName: babyName,
                           familyId: familyId,
                           themeColor: themeColor,
                           onKickCountUpdated: onKickCountUpdated,
-                        ),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 8),
-                    // Peso e Tamanho
-                    SizeAndWeightDisplayWidget(
-                      dumDate: dumDate,
-                      themeColor: themeColor,
-                    ),
+                        );
+                      }
+
+                      try {
+                        final babyData = BabyData.getData(weeks);
+                        final size = babyData['size'] ?? '-';
+                        final weight = babyData['weight'] ?? '-';
+
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: themeColor.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: themeColor.withOpacity(0.18),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              // Medida
+                              Expanded(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.straighten, size: 14, color: themeColor),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        size,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: themeColor,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Divisor vertical
+                              Container(
+                                height: 14,
+                                width: 1,
+                                color: themeColor.withOpacity(0.2),
+                              ),
+                              // Peso
+                              Expanded(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.scale, size: 14, color: themeColor),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        weight,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: themeColor,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Divisor vertical
+                              Container(
+                                height: 14,
+                                width: 1,
+                                color: themeColor.withOpacity(0.2),
+                              ),
+                              // Chutes Interativo
+                              Expanded(
+                                child: KickCounterCompactButton(
+                                  kickCount: kickCount,
+                                  babyName: babyName,
+                                  familyId: familyId,
+                                  themeColor: themeColor,
+                                  onKickCountUpdated: onKickCountUpdated,
+                                  isFlat: true,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      } catch (e) {
+                        debugPrint('Erro ao gerar relatório gestacional: $e');
+                        return KickCounterCompactButton(
+                          kickCount: kickCount,
+                          babyName: babyName,
+                          familyId: familyId,
+                          themeColor: themeColor,
+                          onKickCountUpdated: onKickCountUpdated,
+                        );
+                      }
+                    }(),
                   ],
                 ),
               ),

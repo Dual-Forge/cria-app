@@ -41,11 +41,11 @@ serve(async (req) => {
       items: mpItems,
       back_urls: {
         success:
-          `https://web-jade-ten-51.vercel.app/presentes/${family_id}?payment=success`,
+          `https://denguinho-mu.vercel.app/presentes/${family_id}?payment=success`,
         failure:
-          `https://web-jade-ten-51.vercel.app/presentes/${family_id}?payment=failure`,
+          `https://denguinho-mu.vercel.app/presentes/${family_id}?payment=failure`,
         pending:
-          `https://web-jade-ten-51.vercel.app/presentes/${family_id}?payment=pending`,
+          `https://denguinho-mu.vercel.app/presentes/${family_id}?payment=pending`,
       },
       auto_return: "approved",
       notification_url:

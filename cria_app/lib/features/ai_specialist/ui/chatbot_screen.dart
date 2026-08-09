@@ -1,7 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:google_generative_ai/google_generative_ai.dart' as gemini;
-import 'package:cria_app/features/ai_specialist/services/gemini_service.dart';
+import 'package:cria_app/features/ai_specialist/services/ai_service.dart';
 import 'package:cria_app/features/ai_specialist/repositories/chat_repository.dart';
 
 class ChatbotScreen extends StatefulWidget {
@@ -16,18 +16,31 @@ class ChatbotScreen extends StatefulWidget {
 class _ChatbotScreenState extends State<ChatbotScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final GeminiService _geminiService = GeminiService();
-  late final ChatRepository _chatRepository = ChatRepository(Supabase.instance.client);
+  final AIService _aiService = AIService();
+  late final ChatRepository _chatRepository = ChatRepository(
+    Supabase.instance.client,
+  );
 
   List<Map<String, dynamic>> _messages = [];
   bool _isLoading = true;
   bool _isTyping = false;
-  late gemini.ChatSession _chatSession;
+
+  // Dados dinâmicos do usuário para o system prompt da Nanda
+  String _userName = '';
+  String _userRole = 'mae';
+  String _babyName = 'Bebê';
 
   @override
   void initState() {
     super.initState();
     _loadMessages();
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadMessages() async {
@@ -38,10 +51,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         return;
       }
 
-      int currentWeeks = 0;
-      String userRole = 'mae';
-      String userName = '';
-      String babyName = widget.babyName ?? 'Bebê';
+      _babyName = widget.babyName ?? 'Bebê';
 
       try {
         final profilesData = await Supabase.instance.client
@@ -51,13 +61,12 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
         if (profilesData.isNotEmpty) {
           final myProfile = profilesData[0];
-          userRole = myProfile['role'] ?? 'mae';
-          userName = myProfile['nickname'] ?? '';
+          _userRole = myProfile['role'] ?? 'mae';
+          _userName = myProfile['nickname'] ?? '';
 
           if (myProfile['family_id'] != null) {
             final familyId = myProfile['family_id'];
 
-            // Query Families table to get the definite baby_name
             final familyRow = await Supabase.instance.client
                 .from('families')
                 .select()
@@ -65,73 +74,32 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                 .maybeSingle();
 
             if (familyRow != null && familyRow['baby_name'] != null) {
-              babyName = familyRow['baby_name'];
-            }
-
-            final familyData = await Supabase.instance.client
-                .from('profiles')
-                .select()
-                .eq('family_id', familyId);
-
-            final momProfile = familyData.firstWhere(
-              (p) => p['role'] == 'mae',
-              orElse: () => <String, dynamic>{},
-            );
-            if (momProfile['dum_date'] != null) {
-              final dum = DateTime.parse(momProfile['dum_date'].toString());
-              final diff = DateTime.now().difference(dum);
-              currentWeeks = (diff.inDays / 7).floor();
+              _babyName = familyRow['baby_name'];
             }
           }
         }
       } catch (e) {
-        debugPrint('Erro contexto: \$e');
+        debugPrint('Erro contexto: $e');
       }
 
-      // 2. Busca mensagens do usuário OU da família
-      final query = Supabase.instance.client
+      // Busca mensagens do Supabase
+      final data = await Supabase.instance.client
           .from('chat_messages')
           .select()
           .order('created_at', ascending: true);
-
-      final data = await query;
-      // Simulando o or() que falharia se family_id não existir na tabela antiga
-      // Como migramos a tabela agora, vamos aceitar o select() normal por enquanto
-      // e filtrar na memória caso RLS permita ver a da família também
 
       final mappedMsgs = List<Map<String, dynamic>>.from(data);
 
       if (mappedMsgs.isEmpty) {
         mappedMsgs.add({
-          'role': 'model',
-          'content': 'Olá! Sou a Nanda, a especialista virtual de vocês. Como posso ajudar a tranquilizar o dia de hoje? ✨🤍',
+          'role': 'assistant',
+          'content':
+              'Olá! Sou a Nanda, a especialista virtual de vocês. Como posso ajudar a tranquilizar o dia de hoje? ✨🤍',
           'created_at': DateTime.now().toIso8601String(),
         });
       }
 
-      // 3. Monta o histórico pro Gemini
-      List<gemini.Content> history = [];
-      for (var msg in mappedMsgs) {
-        if (msg['role'] == 'user') {
-          history.add(gemini.Content.text(msg['content']));
-        } else if (msg['role'] == 'model') {
-          history.add(gemini.Content.model([gemini.TextPart(msg['content'])]));
-        }
-      }
-
-      // 4. Inicia a sessão
-      if (_geminiService.isConfigured) {
-        _chatSession = _geminiService.startChat(
-          history,
-          userData: {
-            'role': userRole,
-            'weeks': currentWeeks,
-            'userName': userName,
-            'babyName': babyName,
-          },
-        );
-      }
-
+      if (!mounted) return;
       setState(() {
         _messages = mappedMsgs;
         _isLoading = false;
@@ -139,8 +107,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
       _scrollToBottom();
     } catch (e) {
-      debugPrint('Erro ao carregar chat: \$e');
-      setState(() => _isLoading = false);
+      debugPrint('Erro ao carregar chat: $e');
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -158,11 +126,11 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
-    if (text.isEmpty || !_geminiService.isConfigured || _isTyping) return;
+    if (text.isEmpty || _isTyping) return;
 
     _messageController.clear();
 
-    // Mostra a msg do usuário na tela instantaneamente
+    // Mostra a mensagem do usuário instantaneamente
     setState(() {
       _messages.add({
         'role': 'user',
@@ -173,61 +141,69 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     });
     _scrollToBottom();
 
-    // Salva a msg do user no BD via ChatRepository
-    await _chatRepository.saveMessage(content: text, role: 'user');
-
+    // 1. Salva no Supabase (isolado — não bloqueia a IA)
     try {
-      // Chama o Gemini
-      final response = await _chatSession.sendMessage(
-        gemini.Content.text(text),
+      await _chatRepository.saveMessage(content: text, role: 'user');
+    } catch (dbError) {
+      debugPrint('[Supabase] Erro ao salvar mensagem do usuário: $dbError');
+    }
+
+    // 2. Monta o histórico no formato Groq: apenas role user/assistant
+    final groqHistory = _messages
+        .where((m) => m['role'] == 'user' || m['role'] == 'assistant')
+        .map(
+          (m) => {
+            'role': m['role'] as String,
+            'content': m['content'] as String,
+          },
+        )
+        .toList();
+
+    // 3. Chama o AIService
+    try {
+      final reply = await _aiService.sendChatMessage(
+        history: groqHistory,
+        userName: _userName,
+        userRole: _userRole,
+        babyName: _babyName,
       );
-      final replyText = response.text ?? 'Desculpe, não consegui entender.';
 
-      // Mostra a resposta na tela
+      if (!mounted) return;
+
       setState(() {
         _messages.add({
-          'role': 'model',
-          'content': replyText,
-          'created_at': DateTime.now().toIso8601String(),
-        });
-        _isTyping = false;
-      });
-      _scrollToBottom();
-
-      // Salva a resposta no BD via ChatRepository
-      await _chatRepository.saveMessage(content: replyText, role: 'model');
-
-    } catch (e) {
-      setState(() {
-        _isTyping = false;
-        _messages.add({
-          'role': 'model',
-          'content': 'Houve um erro de conexão. Tente novamente mais tarde.',
+          'role': 'assistant',
+          'content': reply,
           'created_at': DateTime.now().toIso8601String(),
         });
       });
       _scrollToBottom();
+
+      // 4. Salva a resposta da IA (isolado)
+      try {
+        await _chatRepository.saveMessage(content: reply, role: 'model');
+      } catch (dbError) {
+        debugPrint('[Supabase] Erro ao salvar resposta da IA: $dbError');
+      }
+    } catch (aiError) {
+      debugPrint('[AIService] Erro: $aiError');
+      if (!mounted) return;
+
+      setState(() {
+        _messages.add({
+          'role': 'assistant',
+          'content': 'Ops, tive um problema técnico. Pode tentar novamente? 🤍',
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      });
+      _scrollToBottom();
+    } finally {
+      if (mounted) setState(() => _isTyping = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_geminiService.isConfigured) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Cria AI')),
-        body: const Center(
-          child: Padding(
-            padding: EdgeInsets.all(20),
-            child: Text(
-              'A Inteligência Artificial ainda não foi configurada.\\nPor favor, defina a GEMINI_API_KEY no ambiente.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-          ),
-        ),
-      );
-    }
-
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -235,16 +211,12 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           children: [
             CircleAvatar(
               radius: 16,
-              backgroundColor: Colors.pinkAccent.withOpacity(0.1),
+              backgroundColor: Colors.pinkAccent.withValues(alpha: 0.1),
               backgroundImage: const AssetImage('assets/images/nanda.png'),
               onBackgroundImageError: (_, __) {},
-              child: const Icon(Icons.support_agent, size: 16, color: Colors.pinkAccent),
             ),
             const SizedBox(width: 10),
-            const Text(
-              'Nanda',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+            const Text('Nanda', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         backgroundColor: Colors.white,
@@ -259,11 +231,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             color: Colors.amber[50],
             child: Row(
               children: [
-                Icon(
-                  Icons.info_outline,
-                  color: Colors.amber[800],
-                  size: 20,
-                ),
+                Icon(Icons.info_outline, color: Colors.amber[800], size: 20),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -289,10 +257,11 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                     itemBuilder: (context, index) {
                       final msg = _messages[index];
                       final isUser = msg['role'] == 'user';
-                      return _buildMessageBubble(msg['content'], isUser);
+                      return _buildMessageBubble(msg['content'] as String, isUser);
                     },
                   ),
           ),
+
           if (_isTyping)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -304,13 +273,14 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                 ),
               ),
             ),
+
           // Caixa de texto
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, -4),
                 ),
@@ -340,16 +310,17 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                     ),
                     maxLines: null,
                     textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => _sendMessage(),
+                    onSubmitted: _isTyping ? null : (_) => _sendMessage(),
                   ),
                 ),
                 const SizedBox(width: 8),
                 CircleAvatar(
-                  backgroundColor: Colors.pinkAccent.shade700,
+                  backgroundColor:
+                      _isTyping ? Colors.grey[300] : Colors.pinkAccent.shade700,
                   radius: 22,
                   child: IconButton(
                     icon: const Icon(Icons.send, color: Colors.white, size: 20),
-                    onPressed: _sendMessage,
+                    onPressed: _isTyping ? null : _sendMessage,
                   ),
                 ),
               ],
@@ -379,14 +350,13 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
               ? []
               : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 5,
                     offset: const Offset(0, 2),
                   ),
                 ],
         ),
         child: Text(
-          // Tratar markdown simples removendo asteriscos por enquanto para design limpo
           text.replaceAll('**', ''),
           style: TextStyle(
             color: isUser ? Colors.white : const Color(0xFF2D3142),

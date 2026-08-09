@@ -211,6 +211,9 @@ class KickCounterCompactButton extends StatefulWidget {
   /// Callback opcional quando o contador é atualizado
   final Function(int newCount)? onKickCountUpdated;
 
+  /// Mostrar em modo flat (sem bordas/fundo) para aninhar em outros containers
+  final bool isFlat;
+
   const KickCounterCompactButton({
     super.key,
     required this.kickCount,
@@ -218,6 +221,7 @@ class KickCounterCompactButton extends StatefulWidget {
     required this.familyId,
     required this.themeColor,
     this.onKickCountUpdated,
+    this.isFlat = false,
   });
 
   @override
@@ -314,17 +318,20 @@ class _KickCounterCompactButtonState extends State<KickCounterCompactButton> {
     return GestureDetector(
       onTap: _isLoading ? null : _registerKick,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: widget.themeColor.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: widget.themeColor.withOpacity(0.3),
-            width: 1,
-          ),
-        ),
+        padding: widget.isFlat ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: widget.isFlat
+            ? null
+            : BoxDecoration(
+                color: widget.themeColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: widget.themeColor.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (_isLoading)
               SizedBox(
@@ -338,17 +345,20 @@ class _KickCounterCompactButtonState extends State<KickCounterCompactButton> {
                 ),
               )
             else
-              const Text(
-                '🦶',
-                style: TextStyle(fontSize: 14),
+              Text(
+                widget.isFlat ? '👣' : '🦶',
+                style: TextStyle(fontSize: widget.isFlat ? 12 : 14),
               ),
             const SizedBox(width: 6),
-            Text(
-              _localKickCount.toString(),
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: widget.themeColor,
+            Flexible(
+              child: Text(
+                widget.isFlat ? '$_localKickCount chutes' : _localKickCount.toString(),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: widget.themeColor,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
