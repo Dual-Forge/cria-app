@@ -54,10 +54,15 @@ class _VideoClipWindowPickerState extends State<VideoClipWindowPicker> {
 
   void _emit() => widget.onClipChanged?.call((_startMs, _endMs));
 
-  int _msAtPx(double px, double trackWidth) =>
-      (px.clamp(0.0, trackWidth) * _totalMs / trackWidth).round();
+  int _msAtPx(double px, double trackWidth) {
+    if (trackWidth <= 0 || _totalMs <= 0) return 0;
+    return (px.clamp(0.0, trackWidth) * _totalMs / trackWidth).round();
+  }
 
-  double _pxAtMs(int ms, double trackWidth) => ms / _totalMs * trackWidth;
+  double _pxAtMs(int ms, double trackWidth) {
+    if (_totalMs <= 0) return 0;
+    return ms / _totalMs * trackWidth;
+  }
 
   /// Identifica qual elemento será arrastado a partir de onde o gesto começou.
   void _onDragStart(DragStartDetails d, double trackWidth) {
@@ -302,6 +307,7 @@ class _TickPainter extends CustomPainter {
 
     const majorStep = 5; // a cada 5 segundos
     final totalSeconds = (totalMs / 1000).ceil();
+    if (totalSeconds <= 0) return; // vídeo com duração zero: nada a desenhar
     for (int s = 0; s <= totalSeconds; s++) {
       final x = size.width * s / totalSeconds;
       if (s % majorStep == 0) {

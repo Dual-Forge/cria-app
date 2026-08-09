@@ -44,8 +44,10 @@ class _VideoTrimmerSheetState extends State<_VideoTrimmerSheet> {
   bool _isInitializing = true;
   Duration? _totalDuration;
 
-  late int _startMs;
-  late int _endMs;
+  // Inicializados cedo para evitar LateInitializationError se o callback
+  // chegar antes do player estar pronto.
+  int _startMs = 0;
+  int _endMs = 0;
 
   @override
   void initState() {
@@ -112,94 +114,126 @@ class _VideoTrimmerSheetState extends State<_VideoTrimmerSheet> {
   @override
   Widget build(BuildContext context) {
     final maxH = MediaQuery.of(context).size.height * 0.85;
-    return Container(
-      constraints: BoxConstraints(maxHeight: maxH),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Título
-              Center(
-                child: Text(
-                  'Escolha o trecho do vídeo',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.deepPurple.shade700,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Center(
-                child: Text(
-                  'Arraste as bordas para selecionar até 1 minuto.',
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                ),
-              ),
-              const SizedBox(height: 16),
+    // Usa LayoutBuilder no nível do sheet para capturar a largura real antes
+    // de entrar no SingleChildScrollView (que entrega constraints infinitas
+    // para filhos Column, quebrando o VideoClipWindowPicker).
+    return LayoutBuilder(
+      builder: (context, outerConstraints) {
+        // Largura disponível descontando o padding horizontal (20+20 = 40).
+        final pickerWidth = (outerConstraints.maxWidth == double.infinity
+                ? MediaQuery.of(context).size.width
+                : outerConstraints.maxWidth) -
+            40;
 
-              // Preview
-              _buildPreview(),
-
-              const SizedBox(height: 16),
-
-              // Seletor de janela
-              if (_totalDuration != null)
-                VideoClipWindowPicker(
-                  totalDuration: _totalDuration!,
-                  onClipChanged: _onClipChanged,
-                )
-              else
-                const SizedBox.shrink(),
-
-              const SizedBox(height: 20),
-
-              // Ações
-              Row(
+        return Container(
+          constraints: BoxConstraints(maxHeight: maxH),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: Colors.grey.shade400),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
+                  // Título
+                  Center(
+                    child: Text(
+                      'Escolha o trecho do vídeo',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepPurple.shade700,
                       ),
-                      child: const Text('Cancelar'),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _isInitializing ? null : _confirm,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepPurple.shade300,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
+                  const SizedBox(height: 6),
+                  Center(
+                    child: Text(
+                      'Arraste as bordas para selecionar até 1 minuto.',
+                      style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Preview
+                  _buildPreview(),
+
+                  const SizedBox(height: 16),
+
+                  // Seletor de janela — envolto em SizedBox com largura fixa
+                  // para que o LayoutBuilder interno receba maxWidth finito.
+                  if (_totalDuration != null)
+                    SizedBox(
+                      width: pickerWidth,
+                      child: VideoClipWindowPicker(
+                        totalDuration: _totalDuration!,
+                        onClipChanged: _onClipChanged,
                       ),
-                      child: const Text(
-                        'Usar trecho selecionado',
-                        style: TextStyle(color: Colors.white),
+                    )
+                  else
+                    // Placeholder com altura mínima enquanto carrega.
+                    SizedBox(
+                      height: 72,
+                      width: pickerWidth,
+                      child: Center(
+                        child: _isInitializing
+                            ? const CircularProgressIndicator(strokeWidth: 2)
+                            : Text(
+                                'Não foi possível ler a duração do vídeo.',
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 13,
+                                ),
+                              ),
                       ),
                     ),
+
+                  const SizedBox(height: 20),
+
+                  // Ações
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.grey.shade400),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: const Text('Cancelar'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _isInitializing ? null : _confirm,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.deepPurple.shade300,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: const Text(
+                            'Usar trecho selecionado',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
