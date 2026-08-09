@@ -1,0 +1,27 @@
+{
+  "name": "@devos/cli",
+  "version": "2.0.0",
+  "type": "module",
+  "description": "DevOS 2.0 CLI - AI-assisted development framework orchestrator",
+  "main": "dist/index.js",
+  "bin": {
+    "devos": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "clipboardy": "^3.0.0",
+    "commander": "^12.0.0",
+    "gray-matter": "^4.0.3",
+    "open": "^9.1.0",
+    "ora": "^5.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
