@@ -168,9 +168,9 @@ class _VideoClipWindowPickerState extends State<VideoClipWindowPicker> {
                     _buildSelectionWindow(trackWidth),
                     _buildHandle(_pxAtMs(_startMs, trackWidth), isLeft: true),
                     _buildHandle(_pxAtMs(_endMs, trackWidth), isLeft: false),
-                    const IgnorePointer(
+                    IgnorePointer(
                       child: Positioned.fill(
-                        child: CustomPaint(painter: _TickPainter()),
+                        child: CustomPaint(painter: _TickPainter(_totalMs)),
                       ),
                     ),
                   ],
@@ -191,9 +191,14 @@ class _VideoClipWindowPickerState extends State<VideoClipWindowPicker> {
         borderRadius: BorderRadius.circular(12),
         child: Container(
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF4A4458), Color(0xFF2A2A3A), Color(0xFF4A4458)],
+            gradient: LinearGradient(
+              colors: [
+                Colors.deepPurple.withValues(alpha: 0.10),
+                Colors.deepPurple.shade50,
+                Colors.deepPurple.withValues(alpha: 0.10),
+              ],
             ),
+            border: Border.all(color: Colors.deepPurple.shade200),
           ),
         ),
       ),
@@ -229,18 +234,19 @@ class _VideoClipWindowPickerState extends State<VideoClipWindowPicker> {
       top: -4,
       bottom: -4,
       child: Container(
-        width: 20,
+        width: 22,
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(6),
+          color: Colors.deepPurple.shade100,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.deepPurple.shade300, width: 2),
           boxShadow: [
-            BoxShadow(color: Colors.black45, blurRadius: 6, offset: const Offset(0, 2)),
+            BoxShadow(color: Colors.black26, blurRadius: 4, offset: const Offset(0, 2)),
           ],
         ),
         child: Center(
           child: Icon(
             isLeft ? Icons.chevron_left : Icons.chevron_right,
-            color: Colors.deepPurple.shade300,
+            color: Colors.deepPurple.shade700,
             size: 18,
           ),
         ),
@@ -280,21 +286,32 @@ class _VideoClipWindowPickerState extends State<VideoClipWindowPicker> {
 
 /// Desenha pequenas marcas de tick a cada segundo na faixa.
 class _TickPainter extends CustomPainter {
-  const _TickPainter();
+  final int totalMs;
+  const _TickPainter(this.totalMs);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.18)
-      ..strokeWidth = 1;
-    // 60 ticks = marca a cada segundo em vídeos de até 1 minuto.
-    const ticks = 60;
-    for (int i = 0; i <= ticks; i++) {
-      final x = size.width * i / ticks;
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    // Ticks maiores (a cada 5s) e menores (a cada 1s) — legíveis mas sem
+    // virar uma "faixa listrada" densa.
+    final majorPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.10)
+      ..strokeWidth = 1.5;
+    final minorPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.05)
+      ..strokeWidth = 0.5;
+
+    const majorStep = 5; // a cada 5 segundos
+    final totalSeconds = (totalMs / 1000).ceil();
+    for (int s = 0; s <= totalSeconds; s++) {
+      final x = size.width * s / totalSeconds;
+      if (s % majorStep == 0) {
+        canvas.drawLine(Offset(x, 0), Offset(x, size.height), majorPaint);
+      } else {
+        canvas.drawLine(Offset(x, size.height * 0.3), Offset(x, size.height * 0.7), minorPaint);
+      }
     }
   }
 
   @override
-  bool shouldRepaint(covariant _TickPainter old) => false;
+  bool shouldRepaint(covariant _TickPainter old) => old.totalMs != totalMs;
 }

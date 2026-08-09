@@ -76,9 +76,14 @@ class _StoryPageState extends State<StoryPage> {
 
   Future<void> _setupVideo() async {
     final evt = widget.event;
-    final controller = VideoPlayerController.networkUrl(Uri.parse(evt.mediaUrl));
+    VideoPlayerController? controller;
     try {
-      await controller.initialize();
+      controller = VideoPlayerController.networkUrl(
+        Uri.parse(evt.mediaUrl),
+      );
+      await controller
+          .initialize()
+          .timeout(const Duration(seconds: 20));
 
       final totalMs = controller.value.duration.inMilliseconds;
       // Trecho guardado no banco ("corte suave") ou vídeo completo.
@@ -92,12 +97,12 @@ class _StoryPageState extends State<StoryPage> {
       }
 
       await controller.seekTo(Duration(milliseconds: startMs));
-      await controller.setLooping(true);
 
       if (!mounted) {
         await controller.dispose();
         return;
       }
+      await controller.setLooping(true);
       setState(() {
         _video = controller;
         _videoReady = true;
@@ -107,8 +112,14 @@ class _StoryPageState extends State<StoryPage> {
       widget.progress.forward(from: 0);
     } catch (e) {
       debugPrint('[StoryPage] Falha ao carregar vídeo: $e');
+      // Sempre libera o controlador para não vazar (evita crash no web).
+      try {
+        await controller?.dispose();
+      } catch (_) {}
       if (!mounted) return;
-      setState(() => _videoReady = true); // Garante que a UI mostre o fallback
+      setState(() {
+        _videoReady = true; // UI mostra o fallback
+      });
     }
   }
 

@@ -142,6 +142,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
     // Duração para vídeos: calcula o trecho de até 1 minuto.
     int? clipStartMs;
     int? clipEndMs;
+    Uint8List? clipBytes; // Bytes do vídeo (lidos p/ o trimmer, reusados no upload)
     if (isVideo) {
       final duration = await _readVideoDuration(pickedFile.path);
       if (duration == null) {
@@ -153,34 +154,37 @@ class _TimelineScreenState extends State<TimelineScreen> {
       debugPrint('[Timeline] Duração do vídeo: ${duration.inSeconds}s');
       if (duration.inSeconds > 60 && mounted) {
         // Abre o trimmer e cancela o fluxo se o usuário não escolher trecho.
+        debugPrint('[Timeline] Lendo bytes para o trimmer…');
+        try {
+          clipBytes = await pickedFile
+              .readAsBytes()
+              .timeout(const Duration(seconds: 30));
+        } catch (e) {
+          debugPrint('[Timeline] Erro ao ler bytes do vídeo: $e');
+          messenger.showSnackBar(
+            const SnackBar(content: Text('Não foi possível ler o vídeo.')),
+          );
+          return;
+        }
+        if (!mounted) return;
         final clip = await showVideoTrimmerSheet(
           context: context,
           filePath: pickedFile.path,
+          bytes: clipBytes,
         );
-        if (clip == null || !mounted) return;
+        if (clip == null) return;
         clipStartMs = clip.$1;
         clipEndMs = clip.$2;
         debugPrint('[Timeline] Trecho escolhido: $clipStartMs–$clipEndMs ms');
       }
     }
 
-    debugPrint('[Timeline] Lendo bytes do arquivo…');
-    final Uint8List bytes;
-    try {
-      // Vídeos grandes podem demorar; dá um feedback mínimo e aplica timeout.
-      bytes = await pickedFile
-          .readAsBytes()
-          .timeout(const Duration(seconds: 30));
-    } catch (e) {
-      debugPrint('[Timeline] Erro ao ler bytes do arquivo: $e');
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Não foi possível ler o arquivo. Tente outro.'),
-        ),
-      );
-      return;
-    }
-    debugPrint('[Timeline] Bytes lidos: ${bytes.length}');
+    debugPrint('[Timeline] Preparando bytes do arquivo…');
+    // Reutiliza os bytes já lidos no trimmer (vídeo longo) para evitar ler 2x.
+    final Uint8List bytes = clipBytes ??
+        (await _readFileBytes(pickedFile, messenger));
+    if (bytes.isEmpty) return;
+    debugPrint('[Timeline] Bytes prontos: ${bytes.length}');
 
     if (!mounted) return;
 
@@ -202,6 +206,24 @@ class _TimelineScreenState extends State<TimelineScreen> {
       media: media,
       onSubmit: _uploadMemory,
     );
+  }
+
+  /// Lê os bytes de um arquivo selecionado com timeout e feedback amigável.
+  Future<Uint8List> _readFileBytes(
+    XFile file,
+    ScaffoldMessengerState messenger,
+  ) async {
+    try {
+      return await file.readAsBytes().timeout(const Duration(seconds: 30));
+    } catch (e) {
+      debugPrint('[Timeline] Erro ao ler bytes: $e');
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Não foi possível ler o arquivo. Tente outro.'),
+        ),
+      );
+      return Uint8List(0);
+    }
   }
 
   /// Lê a duração de um vídeo com proteção contra travamento (timeout).

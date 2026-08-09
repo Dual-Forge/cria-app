@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io' as io;
 
 import 'package:flutter/foundation.dart';
@@ -17,20 +18,22 @@ import 'video_clip_window_picker.dart';
 Future<(int, int)?> showVideoTrimmerSheet({
   required BuildContext context,
   required String filePath,
+  required Uint8List bytes,
 }) {
   return showModalBottomSheet<(int, int)>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     isDismissible: true,
-    builder: (ctx) => _VideoTrimmerSheet(filePath: filePath),
+    builder: (ctx) => _VideoTrimmerSheet(filePath: filePath, bytes: bytes),
   );
 }
 
 class _VideoTrimmerSheet extends StatefulWidget {
   final String filePath;
+  final Uint8List bytes;
 
-  const _VideoTrimmerSheet({required this.filePath});
+  const _VideoTrimmerSheet({required this.filePath, required this.bytes});
 
   @override
   State<_VideoTrimmerSheet> createState() => _VideoTrimmerSheetState();
@@ -52,14 +55,24 @@ class _VideoTrimmerSheetState extends State<_VideoTrimmerSheet> {
 
   Future<void> _initPlayer() async {
     try {
-      // Web: o image_picker expõe um blob: URL como path — reproduzível por
-      // um <video> nativo. Mobile: caminho real no sistema de arquivos.
-      final controller = kIsWeb
-          ? VideoPlayerController.networkUrl(Uri.parse(widget.filePath))
-          : VideoPlayerController.file(io.File(widget.filePath));
+      // No Web, o path do image_picker é um blob: URL volátil. Para o
+      // video_player reproduzir de forma confiável, montamos uma data: URL
+      // a partir dos bytes lidos (o <video> nativo aceita base64).
+      final String source;
+      if (kIsWeb) {
+        source = 'data:video/mp4;base64,${base64Encode(widget.bytes)}';
+      } else {
+        source = widget.filePath;
+      }
 
-      await controller.initialize();
+      final controller = kIsWeb
+          ? VideoPlayerController.networkUrl(Uri.parse(source))
+          : VideoPlayerController.file(io.File(source));
+
+      debugPrint('[Trimmer] Inicializando player… (bytes=${widget.bytes.length})');
+      await controller.initialize().timeout(const Duration(seconds: 20));
       final dur = controller.value.duration;
+      debugPrint('[Trimmer] Vídeo inicializado, duração=$dur');
       if (!mounted) {
         await controller.dispose();
         return;
@@ -73,9 +86,9 @@ class _VideoTrimmerSheetState extends State<_VideoTrimmerSheet> {
       await controller.setLooping(true);
       await controller.play();
     } catch (e) {
+      debugPrint('[Trimmer] Falha ao inicializar vídeo: $e');
       if (!mounted) return;
       setState(() => _isInitializing = false);
-      debugPrint('[Trimmer] Falha ao inicializar vídeo: $e');
     }
   }
 
