@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cria_app/app/app_dependencies.dart';
 import 'package:video_player/video_player.dart';
 
 import 'package:cria_app/features/parents/timeline/memory_event.dart';
@@ -48,7 +49,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
   @override
   void initState() {
     super.initState();
-    _repo = TimelineRepository(Supabase.instance.client, familyId: widget.familyId);
+    _repo = TimelineRepository(AppDependencies.client, familyId: widget.familyId);
     _scope = TimelineAccess.of();
     _loadData();
   }

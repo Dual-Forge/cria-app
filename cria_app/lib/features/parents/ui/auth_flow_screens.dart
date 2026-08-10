@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cria_app/app/app_dependencies.dart';
 import 'login_screen.dart';
 import 'main_screen.dart';
 import 'profile_setup_screen.dart'; // Certifique-se de que esta tela existe
@@ -16,12 +17,12 @@ class AuthGateScreen extends StatefulWidget {
 class _AuthGateScreenState extends State<AuthGateScreen> {
   // Checagem síncrona inicial — evita loading infinito no Android
   // onde o stream onAuthStateChange pode demorar para emitir.
-  Session? _currentSession = Supabase.instance.client.auth.currentSession;
+  Session? _currentSession = AppDependencies.client.auth.currentSession;
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<AuthState>(
-      stream: Supabase.instance.client.auth.onAuthStateChange,
+      stream: AppDependencies.client.auth.onAuthStateChange,
       builder: (context, snapshot) {
         // Atualiza com dados do stream quando disponível
         if (snapshot.hasData) {
@@ -37,7 +38,7 @@ class _AuthGateScreenState extends State<AuthGateScreen> {
 
         // 2. Se ESTÁ logado, precisamos checar se o perfil existe no banco
         return FutureBuilder(
-          future: Supabase.instance.client
+          future: AppDependencies.client
               .from('profiles')
               .select()
               .eq('id', session.user.id)

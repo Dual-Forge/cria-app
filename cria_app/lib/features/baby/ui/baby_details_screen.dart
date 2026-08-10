@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cria_app/app/app_dependencies.dart';
+import 'package:cria_app/app/app_dependencies.dart';
 import 'dart:async';
 import 'package:cria_app/features/baby/services/baby_data.dart';
 import 'package:cria_app/core/utils/pregnancy_utils.dart' as preg_utils;
@@ -163,7 +165,7 @@ class _BabyDetailsScreenState extends State<BabyDetailsScreen> with TickerProvid
     setState(() => _isLoadingKick = true);
     try {
       final newCount = _localKickCount + 1;
-      await Supabase.instance.client
+      await AppDependencies.client
           .from('baby_profile')
           .update({'kick_count': newCount})
           .eq('family_id', widget.familyId);

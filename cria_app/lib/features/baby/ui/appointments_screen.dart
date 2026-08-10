@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cria_app/app/app_dependencies.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
@@ -70,7 +71,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         centerTitle: true,
       ),
       body: StreamBuilder(
-        stream: Supabase.instance.client
+        stream: AppDependencies.client
             .from('appointments')
             .stream(primaryKey: ['id'])
             .eq('family_id', widget.familyId!),
@@ -737,11 +738,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                               String? uploadedPhotoUrl;
                               if (agendaImageBytes != null) {
                                 final user =
-                                    Supabase.instance.client.auth.currentUser;
+                                    AppDependencies.client.auth.currentUser;
                                 final fileName =
                                     'agenda_photos/${user!.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-                                await Supabase.instance.client.storage
+                                await AppDependencies.client.storage
                                     .from('agenda_photos')
                                     .uploadBinary(
                                       fileName,
@@ -765,7 +766,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                 selectedTime.hour,
                                 selectedTime.minute,
                               );
-                              await Supabase.instance.client
+                              await AppDependencies.client
                                   .from('appointments')
                                   .insert({
                                     'family_id': familyId,

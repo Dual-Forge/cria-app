@@ -1,0 +1,6 @@
+# Copie este arquivo para key.properties e preencha com os dados da keystore
+# de PRODUÇÃO. NUNCA commite o key.properties real (está no .gitignore).
+storeFile=../cria-keystore.jks
+storePassword=SUBSTITUA
+keyAlias=cria
+keyPassword=SUBSTITUA

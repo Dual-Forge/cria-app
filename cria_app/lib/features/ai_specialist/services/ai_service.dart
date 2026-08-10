@@ -1,78 +1,63 @@
 /// AIService
 ///
-/// Responsabilidade única: lógica de IA via Groq Cloud API (REST).
+/// Responsabilidade única: lógica de IA via Edge Function `ai-proxy`
+/// (Supabase). A GROQ_API_KEY NUNCA é embarcada no app — ela vive apenas
+/// como variável de ambiente da função (ver supabase/functions/ai-proxy).
 /// Persistência de mensagens → ChatRepository.
-/// Configuração de chaves → EnvConfig.
 library;
 
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 
-import 'package:cria_app/core/config/env_config.dart';
+import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AIService {
-  static const _baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
-  static const _model = 'llama-3.3-70b-versatile';
+  /// Client Supabase injetado (FASE 5 / DI). Usa `functions.invoke` p/ o proxy.
+  final SupabaseClient client;
 
-  static String get _apiKey => EnvConfig.groqApiKey;
+  AIService(this.client);
 
-  bool get isConfigured => _apiKey.isNotEmpty;
+  /// Configurado quando o Supabase está inicializado — o proxy exige JWT
+  /// de usuário autenticado (verify_jwt = true) e a chave fica no servidor.
+  bool get isConfigured => true;
 
   // ── Helpers internos ──────────────────────────────────────────────────────
 
-  Map<String, String> get _headers => {
-    'Authorization': 'Bearer $_apiKey',
-    'Content-Type': 'application/json',
-  };
-
-  /// Executa uma chamada POST ao endpoint Groq e devolve o texto da resposta.
+  /// Executa uma chamada ao proxy `ai-proxy` e devolve o texto da resposta.
   Future<String?> _chat({
     required List<Map<String, String>> messages,
     bool jsonMode = false,
     double temperature = 0.7,
   }) async {
-    if (_apiKey.isEmpty) {
-      debugPrint('⚠️ GROQ_API_KEY não encontrada.');
-      return null;
-    }
-
-    final body = <String, dynamic>{
-      'model': _model,
-      'messages': messages,
-      'temperature': temperature,
-      'max_tokens': 1024,
-    };
-
-    if (jsonMode) {
-      body['response_format'] = {'type': 'json_object'};
-    }
-
     try {
-      final response = await http
-          .post(Uri.parse(_baseUrl), headers: _headers, body: jsonEncode(body))
+      final response = await client.functions
+          .invoke(
+            'ai-proxy',
+            body: {
+              'messages': messages,
+              'temperature': temperature,
+              if (jsonMode) 'json_mode': true,
+            },
+          )
           .timeout(const Duration(seconds: 30));
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final choices = data['choices'] as List<dynamic>?;
-        if (choices != null && choices.isNotEmpty) {
-          return choices[0]['message']?['content'] as String?;
-        }
-      } else {
-        debugPrint(
-          '[AIService] Erro HTTP ${response.statusCode}: ${response.body}',
-        );
+      final data = response.data as Map<String, dynamic>?;
+      final content = data?['content'] as String?;
+      if (content != null && content.isNotEmpty) {
+        return content;
       }
+      debugPrint(
+        '[AIService] Proxy retornou resposta vazia ou sem "content".',
+      );
     } catch (e) {
-      debugPrint('[AIService] Erro na chamada: $e');
+      debugPrint('[AIService] Erro na chamada ao proxy: $e');
     }
     return null;
   }
 
   // ── Chat da Nanda ─────────────────────────────────────────────────────────
 
-  /// Envia o histórico completo ao Groq e devolve a resposta da Nanda.
+  /// Envia o histórico completo ao proxy e devolve a resposta da Nanda.
   ///
   /// [history] é uma lista de `{"role": "user"|"assistant", "content": "..."}`.
   /// O System Prompt da Nanda é SEMPRE injetado como primeiro item.
@@ -112,10 +97,6 @@ As mensagens devem ser CURTAS E DIRETAS (de 2 a 3 frases curtas por resposta).
   /// Retorna insights gestacionais como mapa JSON.
   ///
   /// Chaves retornadas: body, nutrition, baby, mind, movement, connection
-  // ── Insights Gestacionais ─────────────────────────────────────────────────
-
-  /// Retorna insights gestacionais como mapa JSON.
-  /// Retorna insights gestacionais como mapa JSON.
   Future<Map<String, String>?> getPregnancyInsights(
     int week,
     Map<String, dynamic> userData,
@@ -156,7 +137,7 @@ Mãe: $motherTitle
 Pai: $fatherTitle
 Bebê: $babyName
 
-Com base na literatura médica real para exatamente $week semanas de gestação, preencha o JSON abaixo. 
+Com base na literatura médica real para exatamente $week semanas de gestação, preencha o JSON abaixo.
 Substitua as instruções entre colchetes < > pelo conteúdo gerado, integrando naturalmente os nomes fornecidos:
 
 {

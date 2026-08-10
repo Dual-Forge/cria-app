@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cria_app/app/app_dependencies.dart';
 import 'package:cria_app/features/baby/ui/home_screen.dart';
 import 'package:cria_app/features/store_scraping/ui/shopping_list_screen.dart';
 import 'package:cria_app/features/parents/ui/diary_screen.dart';
@@ -28,11 +29,11 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _setupRealtimeListener() async {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = AppDependencies.client.auth.currentUser;
     if (user == null) return;
 
     try {
-      final profile = await Supabase.instance.client
+      final profile = await AppDependencies.client
           .from('profiles')
           .select('family_id')
           .eq('id', user.id)
@@ -41,7 +42,7 @@ class _MainScreenState extends State<MainScreen> {
       if (profile != null && profile['family_id'] != null) {
         setState(() {
           _familyId = profile['family_id'];
-          _familyStream = Supabase.instance.client
+          _familyStream = AppDependencies.client
               .from('families')
               .stream(primaryKey: ['id'])
               .eq('id', _familyId!)

@@ -34,22 +34,6 @@ class ItemRepository {
     }
   }
 
-  /// Busca apenas os itens marcados como presentes (vitrine pública).
-  Future<List<Map<String, dynamic>>> fetchGiftItems(String familyId) async {
-    try {
-      final data = await _client
-          .from('items')
-          .select()
-          .eq('family_id', familyId)
-          .eq('is_gift', true)
-          .order('created_at', ascending: false);
-      return List<Map<String, dynamic>>.from(data);
-    } catch (e) {
-      debugPrint('[ItemRepository] Erro ao buscar presentes: $e');
-      return [];
-    }
-  }
-
   /// Atualiza o status de um item.
   Future<void> updateItem(String itemId, Map<String, dynamic> updates) async {
     try {

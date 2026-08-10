@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd cria_app && if [ ! -d flutter ]; then git clone https://github.com/flutter/flutter.git --depth 1 -b stable; fi && ./flutter/bin/flutter build web --release",
+  "buildCommand": "cd cria_app && if [ ! -d flutter ]; then git clone https://github.com/flutter/flutter.git --depth 1 -b stable; fi && ./flutter/bin/flutter build web --release --dart-define=SUPABASE_URL=\"$SUPABASE_URL\" --dart-define=SUPABASE_ANON_KEY=\"$SUPABASE_ANON_KEY\" && if [ -f build/web/assets/.env ]; then echo 'ERRO: segredo .env vazou para o bundle web' && exit 1; fi",
   "outputDirectory": "cria_app/build/web",
   "rewrites": [
     {

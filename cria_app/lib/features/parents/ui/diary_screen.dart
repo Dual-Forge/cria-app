@@ -2,6 +2,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cria_app/app/app_dependencies.dart';
 import 'package:image_picker/image_picker.dart';
 // Para kIsWeb
 import 'package:intl/intl.dart';
@@ -52,7 +53,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
   String? _editingId;
 
   Future<void> _addEntry() async {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = AppDependencies.client.auth.currentUser;
     if (_noteController.text.isEmpty && _imageFile == null) return;
 
     setState(() => _isUploading = true);
@@ -66,14 +67,14 @@ class _DiaryScreenState extends State<DiaryScreen> {
       if (_imageFile != null && _imageBytes != null) {
         final fileName =
             'docs/${user!.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        await Supabase.instance.client.storage
+        await AppDependencies.client.storage
             .from('diary_photos')
             .uploadBinary(
               fileName,
               _imageBytes!,
               fileOptions: const FileOptions(contentType: 'image/jpeg'),
             );
-        uploadedImageUrl = Supabase.instance.client.storage
+        uploadedImageUrl = AppDependencies.client.storage
             .from('diary_photos')
             .getPublicUrl(fileName);
       }
@@ -94,12 +95,12 @@ class _DiaryScreenState extends State<DiaryScreen> {
       }
 
       if (_editingId != null) {
-        await Supabase.instance.client
+        await AppDependencies.client
             .from('diary_entries')
             .update(data)
             .eq('id', _editingId!);
       } else {
-        await Supabase.instance.client.from('diary_entries').insert(data);
+        await AppDependencies.client.from('diary_entries').insert(data);
       }
 
       _weightController.clear();
@@ -370,7 +371,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = AppDependencies.client.auth.currentUser;
     if (user == null) return const Center(child: Text("Erro Auth"));
 
     return Scaffold(
@@ -383,7 +384,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
         foregroundColor: Colors.white,
       ),
       body: StreamBuilder(
-        stream: Supabase.instance.client
+        stream: AppDependencies.client
             .from('diary_entries')
             .stream(primaryKey: ['id'])
             .eq('user_id', user.id)

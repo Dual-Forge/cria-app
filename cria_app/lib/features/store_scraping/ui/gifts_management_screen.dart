@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cria_app/app/app_dependencies.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
 
@@ -37,7 +38,7 @@ class _GiftsManagementScreenState extends State<GiftsManagementScreen> {
     }
 
     try {
-      final client = Supabase.instance.client;
+      final client = AppDependencies.client;
       final user = client.auth.currentUser;
 
       if (user != null) {
@@ -118,13 +119,13 @@ class _GiftsManagementScreenState extends State<GiftsManagementScreen> {
 
       // Lógica de atualização do banco (Mantida conforme o original)
       try {
-        final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+        final currentUserId = AppDependencies.client.auth.currentUser?.id;
         final currentThankedBy = List<String>.from(gift['thanked_by'] ?? []);
 
         if (currentUserId != null &&
             !currentThankedBy.contains(currentUserId)) {
           currentThankedBy.add(currentUserId);
-          await Supabase.instance.client
+          await AppDependencies.client
               .from('gift_contributions')
               .update({'thanked': true, 'thanked_by': currentThankedBy})
               .eq('id', gift['id']);
@@ -158,26 +159,6 @@ class _GiftsManagementScreenState extends State<GiftsManagementScreen> {
         backgroundColor: widget.currentTheme,
         foregroundColor: Colors.white,
         elevation: 0,
-        actions: [
-          if (widget.familyId != null)
-            IconButton(
-              icon: const Icon(Icons.share),
-              tooltip: 'Compartilhar Link Público',
-              onPressed: () {
-                final link = kIsWeb
-                    ? '${Uri.base.origin}/#/presentes/${widget.familyId}'
-                    : 'https://denguinho-mu.vercel.app/presentes/${widget.familyId}';
-                Clipboard.setData(ClipboardData(text: link));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Link do Mural copiado para a área de transferência! 🔗',
-                    ),
-                  ),
-                );
-              },
-            ),
-        ],
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: widget.currentTheme))
@@ -253,7 +234,7 @@ class _GiftsManagementScreenState extends State<GiftsManagementScreen> {
             itemBuilder: (context, index) {
               final gift = _gifts[index];
               final currentUserId =
-                  Supabase.instance.client.auth.currentUser?.id;
+                  AppDependencies.client.auth.currentUser?.id;
               final thankedBy = List<String>.from(gift['thanked_by'] ?? []);
               final hasUserThanked =
                   currentUserId != null && thankedBy.contains(currentUserId);

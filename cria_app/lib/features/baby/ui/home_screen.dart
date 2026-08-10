@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cria_app/app/app_dependencies.dart';
 import 'package:cria_app/features/ai_specialist/services/pregnancy_ai_service.dart';
 import 'package:cria_app/features/ai_specialist/services/ai_service.dart';
 import 'package:cria_app/features/ai_specialist/ui/chatbot_screen.dart';
@@ -14,6 +15,9 @@ class HomePregnancyScreen extends StatefulWidget {
   final String? familyCode;
   final String? familyId;
 
+  /// Client Supabase injetado (DI). Usado pelo AIService (proxy) e streams.
+  final SupabaseClient? supabaseClient;
+
   const HomePregnancyScreen({
     super.key,
     required this.themeColor,
@@ -23,6 +27,7 @@ class HomePregnancyScreen extends StatefulWidget {
     this.dumDate,
     this.familyCode,
     this.familyId,
+    this.supabaseClient,
   });
 
   @override
@@ -30,9 +35,12 @@ class HomePregnancyScreen extends StatefulWidget {
 }
 
 class _HomePregnancyScreenState extends State<HomePregnancyScreen> {
+  late final SupabaseClient _client =
+      widget.supabaseClient ?? AppDependencies.client;
+
   // AI Service logic
   final PregnancyAIService _fallbackAiService = PregnancyAIService();
-  final AIService _aiService = AIService();
+  late final AIService _aiService = AIService(_client);
   List<PregnancyTip> _aiTips = [];
   bool _isLoadingTips = false; // Start false to trigger load in build
   String? _weeklyFocus;
@@ -137,7 +145,7 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen> {
   Widget _buildOverviewTab() {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: widget.familyId != null
-          ? Supabase.instance.client
+          ? _client
                 .from('profiles')
                 .stream(primaryKey: ['id'])
                 .eq('family_id', widget.familyId!)
@@ -152,7 +160,7 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen> {
           final profiles = snapshot.data!;
           try {
             final myProfile = profiles.firstWhere(
-              (p) => p['id'] == Supabase.instance.client.auth.currentUser?.id,
+              (p) => p['id'] == _client.auth.currentUser?.id,
             );
             role = myProfile['role'] ?? 'mae';
           } catch (_) {}
@@ -192,7 +200,7 @@ class _HomePregnancyScreenState extends State<HomePregnancyScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
                 child: StreamBuilder<List<Map<String, dynamic>>>(
                   stream: widget.familyId != null
-                      ? Supabase.instance.client
+                      ? _client
                             .from('baby_profile')
                             .stream(primaryKey: ['id'])
                             .eq('family_id', widget.familyId!)

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cria_app/app/app_dependencies.dart';
 import 'package:cria_app/widgets/app_background.dart';
 
 // AppColors e AppStyles são importados de app_background.dart
@@ -192,12 +193,12 @@ class _LoginScreenState extends State<LoginScreen>
 
     try {
       if (_isLogin) {
-        await Supabase.instance.client.auth.signInWithPassword(
+        await AppDependencies.client.auth.signInWithPassword(
           email: email,
           password: password,
         );
       } else {
-        await Supabase.instance.client.auth.signUp(
+        await AppDependencies.client.auth.signUp(
           email: email,
           password: password,
         );
@@ -219,7 +220,7 @@ class _LoginScreenState extends State<LoginScreen>
       // É OBRIGATÓRIO usar o browser externo (Chrome) com externalApplication.
       // O Supabase SDK (v2) captura automaticamente o deep link quando o app
       // retorna, desde que o AndroidManifest tenha o intent-filter correto.
-      await Supabase.instance.client.auth.signInWithOAuth(
+      await AppDependencies.client.auth.signInWithOAuth(
         OAuthProvider.google,
         redirectTo: kIsWeb
             ? (Uri.base.origin.contains('localhost') ? Uri.base.origin : 'https://denguinho-mu.vercel.app/')

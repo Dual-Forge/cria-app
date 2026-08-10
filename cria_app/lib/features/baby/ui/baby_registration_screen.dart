@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cria_app/app/app_dependencies.dart';
 import 'package:cria_app/features/parents/ui/main_screen.dart';
 
 class BabyRegistrationScreen extends StatefulWidget {
@@ -17,13 +18,13 @@ class _BabyRegistrationScreenState extends State<BabyRegistrationScreen> {
   // Função para Salvar e Redirecionar
   Future<void> _saveBabyData() async {
     setState(() => _isLoading = true);
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = AppDependencies.client.auth.currentUser;
 
     if (user == null) return;
 
     try {
       // 1. Pega o ID da família do usuário atual
-      final profile = await Supabase.instance.client
+      final profile = await AppDependencies.client
           .from('profiles')
           .select('family_id')
           .eq('id', user.id)
@@ -31,7 +32,7 @@ class _BabyRegistrationScreenState extends State<BabyRegistrationScreen> {
 
       if (profile['family_id'] != null) {
         // 2. Atualiza a tabela families com o nome e sexo
-        await Supabase.instance.client
+        await AppDependencies.client
             .from('families')
             .update({
               'baby_name': _nameController.text.isEmpty

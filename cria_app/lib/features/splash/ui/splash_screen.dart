@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cria_app/app/app_dependencies.dart';
 import 'package:go_router/go_router.dart';
 import '../../parents/ui/main_screen.dart';
 
@@ -45,7 +46,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _setupRealtimeListener() async {
     debugPrint('[SplashScreen] _setupRealtimeListener iniciado');
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = AppDependencies.client.auth.currentUser;
     if (user == null) {
       debugPrint('[SplashScreen] Usuário não logado, redirecionando para /login');
       // Redireciona para login diretamente — evita loop via '/' → AuthGateScreen → SplashScreen
@@ -56,7 +57,7 @@ class _SplashScreenState extends State<SplashScreen>
     debugPrint('[SplashScreen] Usuário: ${user.id} — consultando perfil...');
     try {
       // Timeout de 10s: se a rede travar no Android, não fica em loading infinito
-      final profile = await Supabase.instance.client
+      final profile = await AppDependencies.client
           .from('profiles')
           .select('family_id')
           .eq('id', user.id)
@@ -75,7 +76,7 @@ class _SplashScreenState extends State<SplashScreen>
         if (mounted) {
           setState(() {
             _familyId = profile['family_id'];
-            _familyStream = Supabase.instance.client
+            _familyStream = AppDependencies.client
                 .from('families')
                 .stream(primaryKey: ['id'])
                 .eq('id', _familyId!)
@@ -355,7 +356,7 @@ class _SplashScreenState extends State<SplashScreen>
             behavior: HitTestBehavior.opaque,
             child: StreamBuilder<List<Map<String, dynamic>>>(
               stream: _familyId != null
-                  ? Supabase.instance.client
+                  ? AppDependencies.client
                         .from('profiles')
                         .stream(primaryKey: ['id'])
                         .eq('family_id', _familyId!)

@@ -6,7 +6,8 @@
       "Bash(flutter test:*)",
       "Bash(tee /tmp/test_full.txt)",
       "Bash(cat C:/Users/jeatk/OneDrive/Documents/GitHub/cria/supabase/migrations/*.sql)",
-      "Bash(find C:/Users/jeatk/OneDrive/Documents/GitHub/cria -name *.sql -type f)"
+      "Bash(find C:/Users/jeatk/OneDrive/Documents/GitHub/cria -name *.sql -type f)",
+      "mcp__supabase__execute_sql"
     ]
   }
 }

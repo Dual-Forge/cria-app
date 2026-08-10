@@ -1,13 +1,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cria_app/app/app_dependencies.dart';
 import 'package:cria_app/features/ai_specialist/services/ai_service.dart';
 import 'package:cria_app/features/ai_specialist/repositories/chat_repository.dart';
 
 class ChatbotScreen extends StatefulWidget {
   final String? babyName;
 
-  const ChatbotScreen({super.key, this.babyName});
+  /// Client Supabase injetado (DI). O AIService usa o proxy via functions.
+  final SupabaseClient? supabaseClient;
+
+  const ChatbotScreen({super.key, this.babyName, this.supabaseClient});
 
   @override
   State<ChatbotScreen> createState() => _ChatbotScreenState();
@@ -16,10 +20,10 @@ class ChatbotScreen extends StatefulWidget {
 class _ChatbotScreenState extends State<ChatbotScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final AIService _aiService = AIService();
-  late final ChatRepository _chatRepository = ChatRepository(
-    Supabase.instance.client,
-  );
+  late final SupabaseClient _client =
+      widget.supabaseClient ?? AppDependencies.client;
+  late final AIService _aiService = AIService(_client);
+  late final ChatRepository _chatRepository = ChatRepository(_client);
 
   List<Map<String, dynamic>> _messages = [];
   bool _isLoading = true;
@@ -45,7 +49,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
   Future<void> _loadMessages() async {
     try {
-      final user = Supabase.instance.client.auth.currentUser;
+      final user = _client.auth.currentUser;
       if (user == null) {
         setState(() => _isLoading = false);
         return;
@@ -54,7 +58,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
       _babyName = widget.babyName ?? 'Bebê';
 
       try {
-        final profilesData = await Supabase.instance.client
+        final profilesData = await _client
             .from('profiles')
             .select()
             .eq('id', user.id);
@@ -67,7 +71,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           if (myProfile['family_id'] != null) {
             final familyId = myProfile['family_id'];
 
-            final familyRow = await Supabase.instance.client
+            final familyRow = await _client
                 .from('families')
                 .select()
                 .eq('id', familyId)
@@ -83,7 +87,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
       }
 
       // Busca mensagens do Supabase
-      final data = await Supabase.instance.client
+      final data = await _client
           .from('chat_messages')
           .select()
           .order('created_at', ascending: true);

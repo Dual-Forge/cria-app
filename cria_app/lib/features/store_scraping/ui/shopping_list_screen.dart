@@ -2,6 +2,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cria_app/app/app_dependencies.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -99,7 +100,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
     _fadeController.forward();
 
     // Configura o stream corretamente para atualizar em tempo real
-    final client = Supabase.instance.client;
+    final client = AppDependencies.client;
     if (widget.familyId != null) {
       _itemsStream = client
           .from('items')
@@ -129,9 +130,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
 
   Future<void> _fetchDueDate() async {
     try {
-      final user = Supabase.instance.client.auth.currentUser;
+      final user = AppDependencies.client.auth.currentUser;
       if (user == null) return;
-      final data = await Supabase.instance.client
+      final data = await AppDependencies.client
           .from('user_settings')
           .select('due_date')
           .eq('user_id', user.id)
@@ -1119,7 +1120,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                                           final fileName =
                                               'product_photos/${user!.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-                                          await Supabase.instance.client.storage
+                                          await AppDependencies.client.storage
                                               .from('product_photos')
                                               .uploadBinary(
                                                 fileName,
@@ -1147,7 +1148,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
 
                                         if (itemToEdit != null) {
                                           // Update existing
-                                          await Supabase.instance.client
+                                          await AppDependencies.client
                                               .from('items')
                                               .update({
                                                 'name': nameController.text,
@@ -1162,7 +1163,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                                               .eq('id', itemToEdit['id']);
                                         } else {
                                           // Insert new
-                                          await Supabase.instance.client
+                                          await AppDependencies.client
                                               .from('items')
                                               .insert({
                                                 'user_id': user!.id,
@@ -1732,7 +1733,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
   @override
   void initState() {
     super.initState();
-    final client = Supabase.instance.client;
+    final client = AppDependencies.client;
     var query = client.from('items').stream(primaryKey: ['id']);
 
     if (widget.familyId != null) {
@@ -1758,7 +1759,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
 
   Future<void> _toggleItem(String itemId, bool val) async {
     try {
-      await Supabase.instance.client
+      await AppDependencies.client
           .from('items')
           .update({'is_purchased': !val})
           .eq('id', itemId);
@@ -1769,7 +1770,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
 
   Future<void> _toggleGiftStatus(String itemId, bool currentStatus) async {
     try {
-      await Supabase.instance.client
+      await AppDependencies.client
           .from('items')
           .update({'is_gift': !currentStatus})
           .eq('id', itemId);
@@ -1789,7 +1790,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
 
   Future<void> _deleteItem(BuildContext context, String itemId) async {
     try {
-      await Supabase.instance.client.from('items').delete().eq('id', itemId);
+      await AppDependencies.client.from('items').delete().eq('id', itemId);
       if (context.mounted) Navigator.pop(context);
     } catch (e) {
       debugPrint('Error deleting item: $e');

@@ -24,8 +24,10 @@ O arquivo `.env` do backend requer:
 # Edge Functions (Supabase)
 
 Os `secrets` do Supabase precisam estar configurados com:
-- `MP_ACCESS_TOKEN`: O token de acesso produtivo ou de testes do Mercado Pago.
-- TODO: Listar possíveis tokens ou webhooks secrets exigidos pelo MP para a validação da assinatura no `/mp-webhook`.
+- `GROQ_API_KEY`: Chave da API Groq, usada pela Edge Function `ai-proxy` (a IA agora roda via proxy autenticado; a chave nunca é embarcada no app).
+- `SUPABASE_URL`: URL do projeto (usado pela `ai-proxy` ao compor endpoints, quando necessário).
+
+> Nota: a integração com Mercado Pago (PIX/checkout) foi **removida** do produto.
 
 ---
 

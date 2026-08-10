@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart'; // Para kIsWeb
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cria_app/app/app_dependencies.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'main_screen.dart';
@@ -68,7 +69,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           'avatars/${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
       if (kIsWeb && _webImageBytes != null) {
-        await Supabase.instance.client.storage
+        await AppDependencies.client.storage
             .from('avatars')
             .uploadBinary(
               fileName,
@@ -79,7 +80,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         // No Mobile usamos o path do XFile, o Supabase SDK cuida do resto
         // ou podemos ler como bytes para ser universal
         final bytes = await _imageFile!.readAsBytes();
-        await Supabase.instance.client.storage
+        await AppDependencies.client.storage
             .from('avatars')
             .uploadBinary(
               fileName,
@@ -88,7 +89,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             );
       }
 
-      return Supabase.instance.client.storage
+      return AppDependencies.client.storage
           .from('avatars')
           .getPublicUrl(fileName);
     } catch (e) {
@@ -109,7 +110,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final user = Supabase.instance.client.auth.currentUser;
+      final user = AppDependencies.client.auth.currentUser;
       if (user == null) throw "Erro de autenticação";
 
       // 1. Upload da Foto (se tiver)
@@ -122,7 +123,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         final code = _inviteCodeController.text.trim().toUpperCase();
         if (code.isEmpty) throw "Digite o código da família.";
 
-        final familyData = await Supabase.instance.client
+        final familyData = await AppDependencies.client
             .from('families')
             .select('id')
             .eq('invite_code', code)
@@ -132,7 +133,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         familyId = familyData['id'];
       } else {
         final newCode = _generateInviteCode();
-        final newFamily = await Supabase.instance.client
+        final newFamily = await AppDependencies.client
             .from('families')
             .insert({
               'invite_code': newCode,
@@ -146,7 +147,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       }
 
       // 3. Salvar Perfil Completo
-      await Supabase.instance.client.from('profiles').insert({
+      await AppDependencies.client.from('profiles').insert({
         'id': user.id,
         'full_name': _fullNameController.text.trim(),
         'nickname': _nicknameController.text.trim(),

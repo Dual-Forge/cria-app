@@ -12,17 +12,13 @@ class EnvConfig {
   static String get supabaseUrl => _get('SUPABASE_URL');
   static String get supabaseAnonKey => _get('SUPABASE_ANON_KEY');
 
-  // ── Groq AI ───────────────────────────────────────────────────────────────
-
-  static String get groqApiKey => _get('GROQ_API_KEY');
-
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  /// Retorna verdadeiro se todas as chaves críticas estão configuradas.
-  static bool get isConfigured =>
-      supabaseUrl.isNotEmpty &&
-      supabaseAnonKey.isNotEmpty &&
-      groqApiKey.isNotEmpty;
+  /// Retorna verdadeiro se as variáveis críticas estão configuradas.
+  ///
+  /// A chave da IA (Groq) NÃO entra aqui: vive como variável de ambiente da
+  /// Edge Function `ai-proxy`, nunca no cliente (SEG-05 / IA-03).
+  static bool get isConfigured => supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
 
   /// Busca a variável: dart-define tem prioridade sobre .env
   static String _get(String key) {
@@ -49,8 +45,6 @@ class EnvConfig {
           'SUPABASE_ANON_KEY',
           defaultValue: '',
         );
-      case 'GROQ_API_KEY':
-        return const String.fromEnvironment('GROQ_API_KEY', defaultValue: '');
       default:
         return '';
     }

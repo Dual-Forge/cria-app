@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cria_app/app/app_dependencies.dart';
 
 import 'package:cria_app/features/baby/services/pregnancy_calculator_service.dart';
 
@@ -57,11 +58,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadAllData() async {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = AppDependencies.client.auth.currentUser;
     if (user == null) return;
 
     try {
-      final client = Supabase.instance.client;
+      final client = AppDependencies.client;
 
       // 1. Carrega Perfil do Usuário
       final myProfile = await client
@@ -148,8 +149,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (picked != null) {
       setState(() => _isLoading = true);
       try {
-        final user = Supabase.instance.client.auth.currentUser;
-        await Supabase.instance.client
+        final user = AppDependencies.client.auth.currentUser;
+        await AppDependencies.client
             .from('profiles')
             .update({'dum_date': picked.toIso8601String().split('T')[0]})
             .eq('id', user!.id);
@@ -166,12 +167,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _saveUserProfile() async {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = AppDependencies.client.auth.currentUser;
     if (user == null) return;
 
     setState(() => _isLoading = true);
     try {
-      await Supabase.instance.client
+      await AppDependencies.client
           .from('profiles')
           .update({
             'nickname': _nicknameController.text,
@@ -203,7 +204,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (_familyId == null) return;
     setState(() => _isLoading = true);
     try {
-      await Supabase.instance.client
+      await AppDependencies.client
           .from('families')
           .update({
             'baby_name': _babyNameController.text,
@@ -237,7 +238,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (picked == null) return;
 
     setState(() => _isUploading = true);
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = AppDependencies.client.auth.currentUser;
 
     try {
       final bytes = await picked.readAsBytes();
@@ -249,7 +250,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Forçamos um contentType limpo para evitar o erro 'image/app/...'
       final String contentType = 'image/$fileExt';
 
-      await Supabase.instance.client.storage
+      await AppDependencies.client.storage
           .from('diary_photos')
           .uploadBinary(
             fileName,
@@ -257,11 +258,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             fileOptions: FileOptions(contentType: contentType, upsert: true),
           );
 
-      final imageUrl = Supabase.instance.client.storage
+      final imageUrl = AppDependencies.client.storage
           .from('diary_photos')
           .getPublicUrl(fileName);
 
-      await Supabase.instance.client
+      await AppDependencies.client
           .from('profiles')
           .update({'photo_url': imageUrl})
           .eq('id', user.id);
@@ -694,59 +695,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 15),
-                  if (_familyId != null) ...[
-                    Container(
-                      decoration: BoxDecoration(
-                        color: widget.themeColor.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(
-                          color: widget.themeColor.withOpacity(0.3),
-                        ),
-                      ),
-                      child: ListTile(
-                        leading: Icon(Icons.link, color: widget.themeColor),
-                        title: const Text(
-                          "Meu Link de Presentes Público",
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        subtitle: Text(
-                          "https://www.amazon.com.br/hz/wishlist/ls/1FT6FPTWGMO5F?ref_=wl_share",
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[700],
-                            decoration: TextDecoration.underline,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.copy),
-                          color: widget.themeColor,
-                          onPressed: () {
-                            Clipboard.setData(
-                              ClipboardData(
-                                text: kIsWeb
-                                    ? '${Uri.base.origin}/#/presentes/$_familyId'
-                                    : 'https://denguinho-mu.vercel.app/presentes/$_familyId',
-                              ),
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Link copiado para a área de transferência!',
-                                ),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-                  ],
                   DropdownButtonFormField<String>(
                     initialValue: _babyGender,
                     decoration: InputDecoration(
@@ -818,10 +766,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // WRAP LIST TILES
                 children: [
                   FutureBuilder(
-                    future: Supabase.instance.client
+                    future: AppDependencies.client
                         .from('profiles')
                         .select('family_id, families(invite_code)')
-                        .eq('id', Supabase.instance.client.auth.currentUser!.id)
+                        .eq('id', AppDependencies.client.auth.currentUser!.id)
                         .single(),
                     builder: (context, AsyncSnapshot snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
@@ -885,7 +833,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: TextStyle(color: Colors.red),
                     ),
                     onTap: () async {
-                      await Supabase.instance.client.auth.signOut();
+                      await AppDependencies.client.auth.signOut();
                       if (mounted) {
                         // Limpa o estado e volta para a raiz (AuthGate)
                         GoRouter.of(context).go('/');

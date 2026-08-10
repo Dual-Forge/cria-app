@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -11,11 +11,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:cria_app/core/config/env_config.dart';
 import 'package:cria_app/features/parents/ui/auth_flow_screens.dart';
-import 'package:cria_app/features/store_scraping/ui/web_gift_screen.dart';
-import 'package:cria_app/features/store_scraping/services/payment_service.dart';
 import 'package:cria_app/widgets/app_background.dart';
 import 'package:cria_app/features/baby/ui/baby_details_screen.dart';
-import 'package:cria_app/features/store_scraping/ui/public_registry_screen.dart';
 import 'package:cria_app/features/splash/ui/splash_screen.dart';
 import 'package:cria_app/features/parents/ui/main_screen.dart';
 import 'package:cria_app/features/parents/ui/login_screen.dart';
@@ -23,18 +20,16 @@ import 'package:cria_app/features/parents/ui/login_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Carrega o .env — tenta o nome raiz primeiro (declarado como asset no pubspec)
-  bool envLoaded = false;
-  for (final fileName in ['.env', 'assets/.env']) {
+  // SEGURANÇA (SEG-01): o .env NÃO é mais asset e NUNCA é carregado em produção.
+  // Em debug, carregamos o .env local apenas para o desenvolvimento (editor);
+  // em release, a configuração vem exclusivamente de --dart-define via EnvConfig.
+  if (kDebugMode) {
     try {
-      await dotenv.load(fileName: fileName);
-      envLoaded = true;
-      debugPrint('[main] .env carregado via "$fileName"');
-      break;
-    } catch (_) {}
-  }
-  if (!envLoaded) {
-    debugPrint('[main] .env não encontrado — usando dart-define.');
+      await dotenv.load(fileName: '.env');
+      debugPrint('[main] .env carregado (desenvolvimento).');
+    } catch (_) {
+      debugPrint('[main] .env não encontrado (dev) — usando dart-define.');
+    }
   }
 
   // url_strategy é exclusivo da Web
@@ -126,8 +121,7 @@ class _CriaAppState extends State<CriaApp> {
         debugPrint('[Router] redirect → isLoggedIn=$isLoggedIn, location=$location');
 
         final publicRoutes = ['/login'];
-        final isPublic = publicRoutes.contains(location) ||
-            location.startsWith('/presentes/');
+        final isPublic = publicRoutes.contains(location);
 
         // Se não logado e tentando acessar rota protegida → login
         if (!isLoggedIn && !isPublic) {
@@ -160,15 +154,6 @@ class _CriaAppState extends State<CriaApp> {
           builder: (context, state) => const MainScreen(),
         ),
 
-        // Rota pública: vitrine de presentes
-        GoRoute(
-          path: '/presentes/:id',
-          builder: (context, state) {
-            final familyId = state.pathParameters['id']!;
-            return PublicRegistryScreen(familyId: familyId);
-          },
-        ),
-
         // Baby Details
         GoRoute(
           path: '/baby-details',
@@ -187,21 +172,6 @@ class _CriaAppState extends State<CriaApp> {
           },
         ),
 
-        // Checkout
-        GoRoute(
-          path: '/checkout/:id',
-          builder: (context, state) {
-            final familyId = state.pathParameters['id']!;
-            final paymentService = PaymentService(Supabase.instance.client);
-            final selectedItems =
-                state.extra as List<Map<String, dynamic>>? ?? [];
-            return WebGiftScreen(
-              familyId: familyId,
-              paymentService: paymentService,
-              selectedItems: selectedItems,
-            );
-          },
-        ),
       ],
     );
   }

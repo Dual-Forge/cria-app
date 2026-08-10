@@ -1,0 +1,22 @@
+# ============================================================
+# SEGURANÇA — Nunca commitar segredos (.env*, launch.json)
+# ============================================================
+# Protege credenciais em qualquer subpasta do repositório.
+.env
+.env.*
+.env.local
+.env*.local
+!.env.example
+
+# .vscode pode conter dart-define com chaves em alguns setups
+.vscode/
+
+# Artefatos de build e ferramentas
+build/
+.kiro/specs/
+
+# Scripts de teste que podem embutir chaves (regenerar a partir de env vars)
+scripts_and_tests/
+
+# Vercel
+.vercel/
