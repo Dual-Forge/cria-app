@@ -199,7 +199,10 @@ class _CriaAppState extends State<CriaApp> {
       title: 'Cria',
       debugShowCheckedModeBanner: false,
       routerConfig: _router,
-      builder: (context, child) => GlobalBackgroundWrapper(child: child),
+      builder: (context, child) => Material(
+        type: MaterialType.transparency,
+        child: GlobalBackgroundWrapper(child: child),
+      ),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple),
         textTheme: GoogleFonts.nunitoTextTheme().copyWith(

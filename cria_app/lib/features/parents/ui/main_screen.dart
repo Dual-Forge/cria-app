@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cria_app/app/app_dependencies.dart';
 import 'package:cria_app/features/baby/ui/home_screen.dart';
 import 'package:cria_app/features/store_scraping/ui/shopping_list_screen.dart';

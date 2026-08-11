@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cria_app/app/app_dependencies.dart';
 import 'package:cria_app/features/parents/ui/main_screen.dart';
 

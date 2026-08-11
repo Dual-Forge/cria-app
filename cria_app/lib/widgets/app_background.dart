@@ -50,23 +50,20 @@ class GlobalBackgroundWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // O Scaffold aqui serve como "container de raiz" que:
-    // 1. Fornece um ancestral Material válido para a árvore toda
-    // 2. Garante que o Stack filho tenha constraints de tela cheia
-    // 3. Mantém o background fixo enquanto o conteúdo navega
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
-        fit: StackFit.expand, // força o Stack a ocupar 100% da tela
-        children: [
-          // Camada 1: fundo global — sempre por baixo de tudo
-          const _AppBackground(),
+    // Usa um Stack simples com fundo sólido como raiz.
+    // NÃO usa Scaffold aqui: cada rota tem seu próprio Scaffold.
+    // Usar dois Scaffolds empilhados com backgroundColor transparent
+    // causa tela branca no Flutter Web.
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Camada 1: fundo global — sempre por baixo de tudo
+        const _AppBackground(),
 
-          // Camada 2: conteúdo da rota atual
-          // child pode ser null durante a inicialização do GoRouter no Web
-          child ?? const SizedBox.shrink(),
-        ],
-      ),
+        // Camada 2: conteúdo da rota atual
+        // child pode ser null durante a inicialização do GoRouter no Web
+        child ?? const SizedBox.shrink(),
+      ],
     );
   }
 }

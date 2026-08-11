@@ -71,35 +71,48 @@
   </div>
   <script>
     (function() {
+      var removed = false;
       function removeLoading() {
-        const loading = document.getElementById('loading');
-        if (loading && loading.style.display !== 'none') {
+        if (removed) return;
+        removed = true;
+        var loading = document.getElementById('loading');
+        if (loading) {
           loading.style.opacity = '0';
+          loading.style.transition = 'opacity 0.3s ease-out';
           setTimeout(function() {
-            loading.style.display = 'none';
-          }, 400);
+            if (loading.parentNode) loading.parentNode.removeChild(loading);
+          }, 350);
         }
       }
 
-      // 1. Listen for DOM mutations when Flutter engine renders elements
-      const observer = new MutationObserver(function(mutations) {
-        for (const m of mutations) {
-          for (const node of m.addedNodes) {
-            if (node.nodeType === 1) {
-              const tag = node.tagName ? node.tagName.toLowerCase() : '';
-              if (tag === 'flutter-view' || tag === 'flt-glass-pane' || tag === 'canvas' || (node.classList && node.classList.contains('flt-glass-pane'))) {
-                removeLoading();
-                observer.disconnect();
-                return;
-              }
-            }
+      // Strategy 1: Flutter fires this event on the window when ready
+      window.addEventListener('flutter-initialized', removeLoading);
+
+      // Strategy 2: MutationObserver — watch for Flutter DOM elements
+      var observer = new MutationObserver(function() {
+        // Any of these tags indicate Flutter has mounted its render tree
+        var hints = ['flutter-view', 'flt-glass-pane', 'flt-scene-host'];
+        for (var i = 0; i < hints.length; i++) {
+          if (document.querySelector(hints[i])) {
+            removeLoading();
+            observer.disconnect();
+            return;
           }
+        }
+        // CanvasKit renders into a <canvas> directly under body
+        var canvases = document.body.querySelectorAll('canvas');
+        if (canvases.length > 0) {
+          removeLoading();
+          observer.disconnect();
         }
       });
       observer.observe(document.body, { childList: true, subtree: true });
 
-      // 2. Safety fallback: remove after 3.5 seconds max so user is never stuck
-      setTimeout(removeLoading, 3500);
+      // Strategy 3: Safety fallback — never leave user on loading screen
+      setTimeout(function() {
+        removeLoading();
+        observer.disconnect();
+      }, 5000);
     })();
   </script>
   <script src="flutter_bootstrap.js" async></script>
