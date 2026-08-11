@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cria_app/app/app_dependencies.dart';
 import 'package:go_router/go_router.dart';
-import '../../parents/ui/main_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -23,6 +22,7 @@ class _SplashScreenState extends State<SplashScreen>
   Stream<Map<String, dynamic>>? _familyStream;
   String? _familyId;
   bool _isLoading = true;
+  Timer? _autoNavigateTimer;
 
   @override
   void initState() {
@@ -42,6 +42,10 @@ class _SplashScreenState extends State<SplashScreen>
     )..repeat(reverse: true);
 
     _setupRealtimeListener();
+
+    _autoNavigateTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) context.go('/home');
+    });
   }
 
   Future<void> _setupRealtimeListener() async {
@@ -95,6 +99,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
+    _autoNavigateTimer?.cancel();
     _heartController.dispose();
     _textPulseController.dispose();
     super.dispose();

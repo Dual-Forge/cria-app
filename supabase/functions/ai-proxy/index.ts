@@ -20,12 +20,24 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const DEFAULT_MODEL = "llama-3.3-70b-versatile";
 
+// CORS: permite o app web (qualquer origem) chamar esta função autenticada.
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 serve(async (req) => {
-  // Rejeita qualquer método que não seja POST (também cobre OPTIONS).
+  // Responde o preflight CORS (o navegador envia OPTIONS antes do POST).
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  // Rejeita qualquer método que não seja POST.
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Método não permitido." }), {
       status: 405,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   }
 
@@ -35,7 +47,7 @@ serve(async (req) => {
       console.error("[ai-proxy] GROQ_API_KEY não configurada no ambiente da função.");
       return new Response(
         JSON.stringify({ error: "Serviço de IA indisponível." }),
-        { status: 503, headers: { "Content-Type": "application/json" } },
+        { status: 503, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
       );
     }
 
@@ -43,7 +55,7 @@ serve(async (req) => {
     if (!body || !Array.isArray(body.messages) || body.messages.length === 0) {
       return new Response(
         JSON.stringify({ error: "Campo messages (não-vazio) é obrigatório." }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
+        { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
       );
     }
 
@@ -74,7 +86,7 @@ serve(async (req) => {
       console.error(`[ai-proxy] Groq HTTP ${groqResponse.status}: ${errorText}`);
       return new Response(
         JSON.stringify({ error: "Falha ao gerar resposta da IA." }),
-        { status: 502, headers: { "Content-Type": "application/json" } },
+        { status: 502, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
       );
     }
 
@@ -84,20 +96,20 @@ serve(async (req) => {
     if (typeof content !== "string") {
       return new Response(
         JSON.stringify({ error: "Resposta da IA sem conteúdo." }),
-        { status: 502, headers: { "Content-Type": "application/json" } },
+        { status: 502, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
       );
     }
 
     return new Response(JSON.stringify({ content }), {
       status: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error("[ai-proxy] Erro:", msg);
     return new Response(
       JSON.stringify({ error: "Erro interno do proxy de IA." }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
+      { status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
     );
   }
 });

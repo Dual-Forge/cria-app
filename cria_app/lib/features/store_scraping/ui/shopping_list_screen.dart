@@ -8,7 +8,6 @@ import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart'; // Para kIsWeb
-import 'package:http/http.dart' as http;
 
 class ShoppingListScreen extends StatefulWidget {
   final Color currentTheme;
@@ -163,62 +162,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
     }
   }
 
-  // --- CORREÇÃO 1: CARREGAMENTO AUTOMÁTICO (Scraping) ---
-  Future<Map<String, String>> _scrapeLink(String url) async {
-    if (kIsWeb) return {}; // Disable scraping on Web to prevent CORS crashes
-    try {
-      final uri = Uri.parse(url);
 
-      // Adicionamos Headers para simular um navegador real (evita bloqueios da Amazon/Shopee)
-      final response = await http
-          .get(
-            uri,
-            headers: {
-              'User-Agent':
-                  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-              'Accept':
-                  'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            },
-          )
-          .timeout(const Duration(seconds: 8)); // Aumentei um pouco o tempo
-
-      if (response.statusCode == 200) {
-        String html = response.body;
-        String title = "";
-        String image = "";
-        String price = "";
-
-        // Tenta pegar o Título
-        RegExp titleRegex = RegExp(
-          r'<meta property="og:title" content="(.*?)"',
-        );
-        var matchTitle = titleRegex.firstMatch(html);
-        if (matchTitle != null) title = matchTitle.group(1) ?? "";
-        if (title.isEmpty) {
-          RegExp titleTag = RegExp(r'<title>(.*?)</title>');
-          var matchTag = titleTag.firstMatch(html);
-          if (matchTag != null) title = matchTag.group(1) ?? "";
-        }
-
-        // Tenta pegar a Imagem
-        RegExp imageRegex = RegExp(
-          r'<meta property="og:image" content="(.*?)"',
-        );
-        var matchImage = imageRegex.firstMatch(html);
-        if (matchImage != null) image = matchImage.group(1) ?? "";
-
-        // Tenta pegar o Preço (Procura por R$ XX,XX)
-        RegExp priceRegex = RegExp(r'R\$\s?(\d+([.,]\d{1,2})?)');
-        var matchPrice = priceRegex.firstMatch(html);
-        if (matchPrice != null) price = matchPrice.group(1) ?? "";
-
-        return {'title': title, 'image': image, 'price': price};
-      }
-    } catch (e) {
-      print("Erro ao ler site: $e");
-    }
-    return {};
-  }
 
   // --- CORREÇÃO 2: CHECKBOX E ATUALIZAÇÃO ---
 
@@ -789,11 +733,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
       selectedAge = null;
     }
 
-    // XFile? imageFile; // Removed unused
     Uint8List? imageBytes;
-    String? scrapedImageUrl = itemToEdit?['image_url'];
+    String? existingImageUrl = itemToEdit?['image_url'];
     bool isUploading = false;
-    bool isScraping = false;
 
     showModalBottomSheet(
       context: context,
@@ -802,30 +744,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setStateSheet) {
-            Future<void> autoFillFromLink() async {
-              if (linkController.text.isEmpty) return;
-              setStateSheet(() => isScraping = true);
-              final data = await _scrapeLink(linkController.text);
-              if (data.isNotEmpty) {
-                if (data['title']!.isNotEmpty) {
-                  nameController.text = data['title']!;
-                }
-                if (data['price']!.isNotEmpty) {
-                  priceController.text = data['price']!;
-                }
-                if (data['image']!.isNotEmpty) scrapedImageUrl = data['image'];
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      "Não foi possível ler o site. Tente preencher manualmente.",
-                    ),
-                  ),
-                );
-              }
-              setStateSheet(() => isScraping = false);
-            }
-
             Future<void> pickImage(ImageSource source) async {
               final picker = ImagePicker();
               final picked = await picker.pickImage(
@@ -835,7 +753,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
               if (picked != null) {
                 final bytes = await picked.readAsBytes();
                 setStateSheet(() {
-                  // imageFile = picked;
                   imageBytes = bytes;
                 });
               }
@@ -868,18 +785,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                         MediaQuery.of(context).viewInsets.bottom + 24,
                       ),
                       children: [
-                        /*
-                      Center(
-                        child: Container(
-                          width: 50,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                      */
                         const SizedBox(height: 20),
                         Text(
                           itemToEdit != null ? "Editar Item" : "Novo Item",
@@ -890,58 +795,15 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                           ),
                         ),
                         const SizedBox(height: 20),
-
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: widget.currentTheme.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(15),
-                            border: Border.all(
-                              color: widget.currentTheme.withOpacity(0.3),
+                        TextField(
+                          controller: linkController,
+                          decoration: InputDecoration(
+                            labelText: "Link da loja (opcional)",
+                            hintText: "https://...",
+                            prefixIcon: const Icon(Icons.link),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                "Possui o link da loja?",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: linkController,
-                                      decoration: const InputDecoration(
-                                        hintText: "Cole o link aqui...",
-                                        border: InputBorder.none,
-                                        isDense: true,
-                                      ),
-                                    ),
-                                  ),
-                                  if (isScraping)
-                                    const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  else
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.auto_awesome,
-                                        color: Colors.amber,
-                                      ),
-                                      onPressed: autoFillFromLink,
-                                      tooltip: "Preencher Automático",
-                                    ),
-                                ],
-                              ),
-                            ],
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -1043,13 +905,13 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                                           fit: BoxFit.cover,
                                         ),
                                       )
-                                    : (scrapedImageUrl != null &&
-                                              scrapedImageUrl!.isNotEmpty
+                                    : (existingImageUrl != null &&
+                                              existingImageUrl!.isNotEmpty
                                           ? ClipRRect(
                                               borderRadius:
                                                   BorderRadius.circular(10),
                                               child: Image.network(
-                                                scrapedImageUrl!,
+                                                existingImageUrl!,
                                                 fit: BoxFit.cover,
                                                 errorBuilder:
                                                     (
@@ -1071,7 +933,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                               ),
                             ),
                             const SizedBox(width: 15),
-                            if (imageBytes == null && scrapedImageUrl == null)
+                            if (imageBytes == null && existingImageUrl == null)
                               const Text(
                                 "Toque para adicionar foto",
                                 style: TextStyle(color: Colors.grey),
@@ -1079,9 +941,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                             else
                               TextButton(
                                 onPressed: () => setStateSheet(() {
-                                  // imageFile = null;
                                   imageBytes = null;
-                                  scrapedImageUrl = null;
+                                  existingImageUrl = null;
                                 }),
                                 child: const Text(
                                   "Remover Foto",
@@ -1114,7 +975,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                                             .client
                                             .auth
                                             .currentUser;
-                                        String? finalImageUrl = scrapedImageUrl;
+                                        String? finalImageUrl = existingImageUrl;
 
                                         if (imageBytes != null) {
                                           final fileName =

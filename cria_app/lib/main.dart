@@ -16,6 +16,7 @@ import 'package:cria_app/features/baby/ui/baby_details_screen.dart';
 import 'package:cria_app/features/splash/ui/splash_screen.dart';
 import 'package:cria_app/features/parents/ui/main_screen.dart';
 import 'package:cria_app/features/parents/ui/login_screen.dart';
+import 'package:cria_app/features/parents/ui/profile_setup_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -128,9 +129,14 @@ class _CriaAppState extends State<CriaApp> {
           return '/login';
         }
 
-        // Se logado e na tela de login → home
+        // Se logado e na tela de login → /splash
         if (isLoggedIn && location == '/login') {
-          return '/';
+          return '/splash';
+        }
+
+        // Se logado e na rota raiz → /splash
+        if (isLoggedIn && location == '/') {
+          return '/splash';
         }
 
         return null;
@@ -152,6 +158,10 @@ class _CriaAppState extends State<CriaApp> {
         GoRoute(
           path: '/home',
           builder: (context, state) => const MainScreen(),
+        ),
+        GoRoute(
+          path: '/profile-setup',
+          builder: (context, state) => const ProfileSetupScreen(),
         ),
 
         // Baby Details

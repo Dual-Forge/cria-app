@@ -1,3 +1,5 @@
+/// Fallback local de dicas gestacionais. Usado quando AIService não está disponível.
+
 import 'dart:async';
 
 class PregnancyTip {
@@ -13,10 +15,6 @@ class PregnancyTip {
 }
 
 class PregnancyAIService {
-  // Singleton pattern for easy access
-  static final PregnancyAIService _instance = PregnancyAIService._internal();
-  factory PregnancyAIService() => _instance;
-  PregnancyAIService._internal();
 
   /// Simulates an AI fetch for pregnancy tips based on the current week.
   /// In the future, this can be replaced with an actual API call to an LLM.

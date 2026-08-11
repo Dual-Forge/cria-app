@@ -1,7 +1,7 @@
 /// ChatRepository
 ///
 /// Responsável pela persistência de mensagens de chat no Supabase.
-/// Separação de responsabilidade: GeminiService foca em IA,
+/// Separação de responsabilidade: AIService foca em IA,
 /// ChatRepository foca em armazenamento.
 library;
 

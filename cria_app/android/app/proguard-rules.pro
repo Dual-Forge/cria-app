@@ -8,3 +8,7 @@
 # Flutter engine usa reflexão; manter entradas padrão do template Flutter
 -keep class io.flutter.** { *; }
 -keep class io.flutter.plugins.** { *; }
+
+# Deferred components do engine (split APKs) não são usados; suprimir avisos
+# de classes ausentes do play-core que o R8 não consegue resolver.
+-dontwarn com.google.android.play.core.**

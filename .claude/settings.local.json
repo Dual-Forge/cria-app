@@ -7,7 +7,13 @@
       "Bash(tee /tmp/test_full.txt)",
       "Bash(cat C:/Users/jeatk/OneDrive/Documents/GitHub/cria/supabase/migrations/*.sql)",
       "Bash(find C:/Users/jeatk/OneDrive/Documents/GitHub/cria -name *.sql -type f)",
-      "mcp__supabase__execute_sql"
+      "mcp__supabase__execute_sql",
+      "PowerShell(git rev-list *)",
+      "PowerShell(git diff-tree *)",
+      "PowerShell($flutter = Get-Command flutter -ErrorAction SilentlyContinue; if \\($flutter\\) { Write-Output \"flutter: $\\($flutter.Source\\)\" } else { Write-Output \"flutter: NOT on PATH\" }; $java = Get-Command java -ErrorAction SilentlyContinue; if \\($java\\) { Write-Output \"java: $\\($java.Source\\)\" } else { Write-Output \"java: NOT on PATH\" })",
+      "mcp__github__get_file_contents",
+      "mcp__github__search_pull_requests",
+      "mcp__github__create_pull_request"
     ]
   }
 }
