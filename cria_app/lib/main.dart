@@ -44,15 +44,25 @@ void main() async {
   final supabaseAnonKey = EnvConfig.supabaseAnonKey;
 
   if (supabaseUrl.isEmpty || supabaseAnonKey.isEmpty) {
-    debugPrint('[main] ERRO: credenciais Supabase não configuradas!');
+    debugPrint(
+      '[main] ERRO: credenciais Supabase não configuradas! '
+      'Verifique --dart-define=SUPABASE_URL e --dart-define=SUPABASE_ANON_KEY.',
+    );
     runApp(const _ConfigErrorApp());
     return;
   }
 
-  await Supabase.initialize(
-    url: supabaseUrl,
-    anonKey: supabaseAnonKey,
-  );
+  try {
+    await Supabase.initialize(
+      url: supabaseUrl,
+      anonKey: supabaseAnonKey,
+    );
+  } catch (e) {
+    // Falha rara de inicialização (rede/perm) nunca pode virar tela branca.
+    debugPrint('[main] ERRO ao inicializar Supabase: $e');
+    runApp(const _ConfigErrorApp());
+    return;
+  }
 
   runApp(const CriaApp());
 }
