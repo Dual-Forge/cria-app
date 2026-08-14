@@ -22,9 +22,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // SEGURANÇA (SEG-01): o .env NÃO é mais asset e NUNCA é carregado em produção.
-  // Em debug, carregamos o .env local apenas para o desenvolvimento (editor);
-  // em release, a configuração vem exclusivamente de --dart-define via EnvConfig.
-  if (kDebugMode) {
+  // Em debug (não-web), carregamos o .env local apenas para o desenvolvimento (editor);
+  // em web ou release, a configuração vem exclusivamente de --dart-define via EnvConfig.
+  if (kDebugMode && !kIsWeb) {
     try {
       await dotenv.load(fileName: '.env');
       debugPrint('[main] .env carregado (desenvolvimento).');

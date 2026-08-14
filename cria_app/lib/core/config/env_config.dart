@@ -28,8 +28,14 @@ class EnvConfig {
     if (fromDartDefine.isNotEmpty) return fromDartDefine;
 
     // 2. Fallback para .env (desenvolvimento local)
-    final fromDotenv =
-        dotenv.env[key]?.trim().replaceAll('"', '').replaceAll("'", '') ?? '';
+    // Só acessa dotenv.env se foi inicializado (nunca em web)
+    String fromDotenv = '';
+    try {
+      fromDotenv =
+          dotenv.env[key]?.trim().replaceAll('"', '').replaceAll("'", '') ?? '';
+    } catch (_) {
+      // dotenv não foi inicializado, ignora
+    }
     if (fromDotenv.isNotEmpty) return fromDotenv;
 
     debugPrint('[EnvConfig] AVISO: Chave "$key" não encontrada em nenhuma fonte.');
